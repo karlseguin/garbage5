@@ -10,6 +10,8 @@ type Set interface {
 	RLock()
 	Unlock()
 	RUnlock()
+	Len() int
+	Exists(value uint32) bool
 }
 
 type FixedSet struct {
@@ -26,4 +28,12 @@ func NewSet(ids []uint32) Set {
 	return &FixedSet{
 		ids: set,
 	}
+}
+
+func (s *FixedSet) Len() int {
+	return s.ids.Len()
+}
+
+func (s *FixedSet) Exists(value uint32) bool {
+	return s.ids.Exists(value)
 }

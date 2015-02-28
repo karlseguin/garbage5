@@ -22,6 +22,14 @@ func (_ DatabaseTests) CreatesAList() {
 	// assertList(openDB(), "test:list", "a-1", "b-2", "c-3")
 }
 
+func (_ DatabaseTests) CreatesASet() {
+	db := createDB()
+	db.CreateSet("test:set", "a-1", "b-2", "c-3")
+	assertSet(db, "test:set", "a-1", "b-2", "c-3")
+	db.Close()
+	// assetSet(openDB(), "test:set", "a-1", "b-2", "c-3")
+}
+
 func createDB() *Database {
 	os.Remove(TMP_PATH) //ignore failures
 	return openDB()
@@ -45,4 +53,12 @@ func assertList(db *Database, name string, expected ...string) {
 		i++
 		return true
 	})
+}
+
+func assertSet(db *Database, name string, expected ...string) {
+	set := db.Set(name)
+	Expect(set.Len()).To.Equal(len(expected))
+	for _, id := range expected {
+		Expect(set.Exists(db.Id(id, false))).To.Equal(true)
+	}
 }
