@@ -76,10 +76,9 @@ func (db *Database) initialize() error {
 	return nil
 }
 
-// convert a string id into an internal id, optionally creating it if necessary
-// (else returning 0 if it doesn't exist)
-func (db *Database) Id(id string, create bool) uint32 {
-	return db.ids.Get(id, create)
+// convert a string id into an internal id
+func (db *Database) Id(id string) uint32 {
+	return db.ids.Get(id, false)
 }
 
 // Returns the list. The list is unlocked; consumers are responsible for locking

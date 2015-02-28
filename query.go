@@ -14,7 +14,12 @@ func NewQuery(sort string, db *Database) *Query {
 	}
 }
 
-func (q *Query) Query() Result {
+func (q *Query) Limit(limit uint32) *Query {
+	q.limit = int(limit)
+	return q
+}
+
+func (q *Query) Execute() Result {
 	sort := q.db.List(q.sort)
 	if sort == nil {
 		return nil //todo
