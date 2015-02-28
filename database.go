@@ -1,6 +1,7 @@
 package garbage5
 
 import (
+	"encoding/binary"
 	"github.com/karlseguin/bolt"
 	"gopkg.in/karlseguin/bytepool.v3"
 	"gopkg.in/karlseguin/idmap.v1"
@@ -11,7 +12,7 @@ var (
 	SETS      = []byte("sets")
 	LISTS     = []byte("lists")
 	RESOURCES = []byte("resources")
-	bp        = bytepool.New(65536, 64)
+	bp        = bytepool.NewEndian(65536, 64, binary.LittleEndian)
 )
 
 type Database struct {
@@ -43,7 +44,7 @@ func New(path string) (*Database, error) {
 }
 
 func (db *Database) initialize() error {
-	return db.storage.Update(func(tx *bolt.Tx) error {
+	err := db.storage.Update(func(tx *bolt.Tx) error {
 		if _, err := tx.CreateBucketIfNotExists(SETS); err != nil {
 			return err
 		}
@@ -55,6 +56,17 @@ func (db *Database) initialize() error {
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+
+	db.loadIds(SETS, func(name string, ids []uint32) {
+		db.sets[name] = NewSet(ids)
+	})
+	db.loadIds(LISTS, func(name string, ids []uint32) {
+		db.lists[name] = NewList(ids)
+	})
+	return nil
 }
 
 // convert a string id into an internal id, optionally creating it if necessary
@@ -127,6 +139,25 @@ func (db *Database) writeIds(bucket []byte, name string, ids []string) error {
 
 	return db.storage.Update(func(tx *bolt.Tx) error {
 		return tx.Bucket(bucket).Put([]byte(name), buffer.Bytes())
+	})
+}
+
+func (db *Database) loadIds(bucket []byte, fn func(name string, ids []uint32)) {
+	db.storage.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(bucket).Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			l := binary.LittleEndian.Uint32(v)
+			ids := make([]uint32, l)
+			position := 4
+			for i := 0 * l; i < l; i++ {
+				start := position + 1
+				end := start + int(v[position])
+				ids[i] = db.ids.Get(string(v[start:end]), true)
+				position = end
+			}
+			fn(string(k), ids)
+		}
+		return nil
 	})
 }
 

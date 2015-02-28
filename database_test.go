@@ -19,7 +19,7 @@ func (_ DatabaseTests) CreatesAList() {
 	db.CreateList("test:list", "a-1", "b-2", "c-3")
 	assertList(db, "test:list", "a-1", "b-2", "c-3")
 	db.Close()
-	// assertList(openDB(), "test:list", "a-1", "b-2", "c-3")
+	assertList(openDB(), "test:list", "a-1", "b-2", "c-3")
 }
 
 func (_ DatabaseTests) CreatesASet() {
@@ -27,7 +27,7 @@ func (_ DatabaseTests) CreatesASet() {
 	db.CreateSet("test:set", "a-1", "b-2", "c-3")
 	assertSet(db, "test:set", "a-1", "b-2", "c-3")
 	db.Close()
-	// assetSet(openDB(), "test:set", "a-1", "b-2", "c-3")
+	assertSet(openDB(), "test:set", "a-1", "b-2", "c-3")
 }
 
 func createDB() *Database {
