@@ -1,5 +1,13 @@
 package garbage5
 
+import (
+	"errors"
+)
+
+var (
+	InvalidSortErr = errors.New("invalid query sort")
+)
+
 type Query struct {
 	sort  string
 	limit int
@@ -19,15 +27,15 @@ func (q *Query) Limit(limit uint32) *Query {
 	return q
 }
 
-func (q *Query) Execute() Result {
+func (q *Query) Execute() (Result, error) {
 	sort := q.db.List(q.sort)
 	if sort == nil {
-		return nil //todo
+		return nil, InvalidSortErr //todo
 	}
 
 	results := q.db.results.Checkout()
 	sort.Each(func(id uint32) bool {
 		return results.Add(id) != q.limit
 	})
-	return results
+	return results, nil
 }

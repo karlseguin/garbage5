@@ -18,13 +18,20 @@ func Test_Query(t *testing.T) {
 	Expectify(&QueryTests{db}, t)
 }
 
-func (qt QueryTests) LimitsNumberOfResults() {
-	result := qt.Query("recent").Limit(3).Execute()
-	assertResult(result, qt.Id("1s"), qt.Id("2s"), qt.Id("3s"))
+func (qt QueryTests) ErrorOnInvalidSort() {
+	result, err := qt.Query("invalid").Execute()
+	Expect(err).To.Equal(InvalidSortErr)
+	Expect(result).To.Equal(nil)
 }
 
-func assertResult(result Result, expected ...uint32) {
+func (qt QueryTests) LimitsNumberOfResults() {
+	result, err := qt.Query("recent").Limit(3).Execute()
+	assertResult(result, err, qt.Id("1s"), qt.Id("2s"), qt.Id("3s"))
+}
+
+func assertResult(result Result, err error, expected ...uint32) {
 	defer result.Release()
+	Expect(err).To.Equal(nil)
 	Expect(result.Len()).To.Equal(len(expected))
 	for i, id := range expected {
 		Expect(result.Ids()[i]).To.Equal(id)
