@@ -36,7 +36,7 @@ func createDB() *Database {
 }
 
 func openDB() *Database {
-	db, err := New(TMP_PATH)
+	db, err := New(Configure().Path(TMP_PATH))
 	if err != nil {
 		panic(err)
 	}

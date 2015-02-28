@@ -30,8 +30,8 @@ type Database struct {
 	lists    map[string]List
 }
 
-func New(path string) (*Database, error) {
-	db, err := bolt.Open(path, 0600, nil)
+func New(c *Configuration) (*Database, error) {
+	db, err := bolt.Open(c.path, 0600, nil)
 	if err != nil {
 		return nil, err
 	}
