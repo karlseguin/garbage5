@@ -22,20 +22,30 @@ func NewQuery(sort string, db *Database) *Query {
 	}
 }
 
+// Specify the maximum number of results to return
 func (q *Query) Limit(limit uint32) *Query {
 	q.limit = int(limit)
 	return q
 }
 
+// Executethe query
 func (q *Query) Execute() (Result, error) {
 	sort := q.db.List(q.sort)
 	if sort == nil {
 		return nil, InvalidSortErr //todo
 	}
 
-	results := q.db.results.Checkout()
+	result := q.db.results.Checkout()
+	count := 0
 	sort.Each(func(id uint32) bool {
-		return results.Add(id) != q.limit
+		if count == q.limit {
+			println("Aa")
+			result.more = true
+			return false
+		}
+		result.Add(id)
+		count++
+		return true
 	})
-	return results, nil
+	return result, nil
 }

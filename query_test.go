@@ -14,7 +14,7 @@ func Test_Query(t *testing.T) {
 	// alternatively, make it possiblet o create a purely in-memory database
 	// so that we can cheaply create them without any I/O
 	db := createDB()
-	db.CreateList("recent", "1s", "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s", "As", "Bs", "Cs", "Ds", "Es", "Fs")
+	db.CreateList("recent", "0s", "1s", "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s", "As", "Bs", "Cs", "Ds", "Es", "Fs")
 	Expectify(&QueryTests{db}, t)
 }
 
@@ -26,7 +26,14 @@ func (qt QueryTests) ErrorOnInvalidSort() {
 
 func (qt QueryTests) LimitsNumberOfResults() {
 	result, err := qt.Query("recent").Limit(3).Execute()
-	assertResult(result, err, qt.Id("1s"), qt.Id("2s"), qt.Id("3s"))
+	Expect(result.HasMore()).To.Equal(true)
+	assertResult(result, err, qt.Id("0s"), qt.Id("1s"), qt.Id("2s"))
+}
+
+func (qt QueryTests) HasNoMore() {
+	result, _ := qt.Query("recent").Limit(20).Execute()
+	Expect(result.HasMore()).To.Equal(false)
+	Expect(result.Len()).To.Equal(16)
 }
 
 func assertResult(result Result, err error, expected ...uint32) {
