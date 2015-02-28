@@ -15,6 +15,11 @@ var (
 	bp        = bytepool.NewEndian(65536, 64, binary.LittleEndian)
 )
 
+type Resource interface {
+	Id() string
+	Bytes() []byte
+}
+
 type Database struct {
 	storage *bolt.DB
 
@@ -117,6 +122,18 @@ func (db *Database) CreateSet(name string, ids ...string) error {
 	return nil
 }
 
+// Store a resource
+func (db *Database) Put(resource Resource) error {
+	return db.storage.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket(RESOURCES).Put([]byte(resource.Id()), resource.Bytes())
+	})
+}
+
+// Close the database
+func (db *Database) Close() error {
+	return db.storage.Close()
+}
+
 func (db *Database) toInts(values []string) []uint32 {
 	l := len(values)
 	ids := make([]uint32, l)
@@ -159,8 +176,4 @@ func (db *Database) loadIds(bucket []byte, fn func(name string, ids []uint32)) {
 		}
 		return nil
 	})
-}
-
-func (db *Database) Close() error {
-	return db.storage.Close()
 }
