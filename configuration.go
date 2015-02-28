@@ -1,12 +1,14 @@
 package garbage5
 
 type Configuration struct {
-	path string
+	path       string
+	maxResults int
 }
 
 func Configure() *Configuration {
 	return &Configuration{
-		path: "/tmp/garbage5.db",
+		maxResults: 100,
+		path:       "/tmp/garbage5.db",
 	}
 }
 
@@ -14,5 +16,12 @@ func Configure() *Configuration {
 // [/tmp/garbage5.db]
 func (c *Configuration) Path(path string) *Configuration {
 	c.path = path
+	return c
+}
+
+// Maximum number of results we'll ever request from a query
+// [100]
+func (c *Configuration) MaxResults(max uint32) *Configuration {
+	c.maxResults = int(max)
 	return c
 }

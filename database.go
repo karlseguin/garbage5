@@ -28,6 +28,7 @@ type Database struct {
 	listLock sync.RWMutex
 	sets     map[string]Set
 	lists    map[string]List
+	results  *ResultPool
 }
 
 func New(c *Configuration) (*Database, error) {
@@ -40,6 +41,7 @@ func New(c *Configuration) (*Database, error) {
 		ids:     idmap.New32(16),
 		sets:    make(map[string]Set),
 		lists:   make(map[string]List),
+		results: NewResultPool(c.maxResults, 128),
 	}
 	if err := database.initialize(); err != nil {
 		db.Close()
@@ -127,6 +129,10 @@ func (db *Database) Put(resource Resource) error {
 	return db.storage.Update(func(tx *bolt.Tx) error {
 		return tx.Bucket(RESOURCES).Put([]byte(resource.Id()), resource.Bytes())
 	})
+}
+
+func (db *Database) Query(sort string) *Query {
+	return NewQuery(sort, db)
 }
 
 // Close the database
