@@ -8,6 +8,7 @@ import (
 )
 
 var (
+	SETS      = []byte("sets")
 	LISTS     = []byte("lists")
 	RESOURCES = []byte("resources")
 	bp        = bytepool.New(65536, 64)
@@ -43,6 +44,9 @@ func New(path string) (*Database, error) {
 
 func (db *Database) initialize() error {
 	return db.storage.Update(func(tx *bolt.Tx) error {
+		if _, err := tx.CreateBucketIfNotExists(SETS); err != nil {
+			return err
+		}
 		if _, err := tx.CreateBucketIfNotExists(LISTS); err != nil {
 			return err
 		}
@@ -79,7 +83,7 @@ func (db *Database) Set(name string) Set {
 
 // Creates, or overwirtes, an in-memory and on-disk list
 func (db *Database) CreateList(name string, ids ...string) error {
-	if err := db.writeIds(name, ids); err != nil {
+	if err := db.writeIds(LISTS, name, ids); err != nil {
 		return err
 	}
 	list := NewList(db.toInts(ids))
@@ -91,7 +95,7 @@ func (db *Database) CreateList(name string, ids ...string) error {
 
 // Creates, or overwirtes, an in-memory and on-disk set
 func (db *Database) CreateSet(name string, ids ...string) error {
-	if err := db.writeIds(name, ids); err != nil {
+	if err := db.writeIds(SETS, name, ids); err != nil {
 		return err
 	}
 	set := NewSet(db.toInts(ids))
@@ -110,7 +114,7 @@ func (db *Database) toInts(values []string) []uint32 {
 	return ids
 }
 
-func (db *Database) writeIds(name string, ids []string) error {
+func (db *Database) writeIds(bucket []byte, name string, ids []string) error {
 	l := len(ids)
 	buffer := bp.Checkout()
 	defer buffer.Release()
@@ -122,7 +126,7 @@ func (db *Database) writeIds(name string, ids []string) error {
 	}
 
 	return db.storage.Update(func(tx *bolt.Tx) error {
-		return tx.Bucket(LISTS).Put([]byte(name), buffer.Bytes())
+		return tx.Bucket(bucket).Put([]byte(name), buffer.Bytes())
 	})
 }
 
