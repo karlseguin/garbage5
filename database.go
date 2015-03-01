@@ -21,6 +21,10 @@ type Resource interface {
 	Bytes() []byte
 }
 
+type Cache interface {
+	Fetch(id uint32, miss func() Resource) Resource
+}
+
 type Database struct {
 	storage *bolt.DB
 
@@ -43,7 +47,7 @@ func New(c *Configuration) (*Database, error) {
 		sets:    make(map[string]Set),
 		lists:   make(map[string]List),
 	}
-	database.results = NewResultPool(c.maxResults, 128)
+	database.results = NewResultPool(c.maxResults, 128, database.getResource)
 	if err := database.initialize(); err != nil {
 		db.Close()
 		return nil, err
@@ -91,7 +95,7 @@ func (db *Database) initialize() error {
 // Returns the list. The list is unlocked; consumers are responsible for locking
 // and unlocking the list (Lock/RLock/Unlock/RUnlock). Changes to the list will
 // not be persisted.
-func (db *Database) List(name string) List {
+func (db *Database) GetList(name string) List {
 	defer db.listLock.RUnlock()
 	db.listLock.RLock()
 	return db.lists[name]
@@ -100,7 +104,7 @@ func (db *Database) List(name string) List {
 // Returns the set. The set is unlocked; consumers are responsible for locking
 // and unlocking the set (Lock/RLock/Unlock/RUnlock). Changes to the set will
 // not be persisted.
-func (db *Database) Set(name string) Set {
+func (db *Database) GetSet(name string) Set {
 	defer db.setLock.RUnlock()
 	db.setLock.RLock()
 	return db.sets[name]
@@ -133,7 +137,7 @@ func (db *Database) CreateSet(name string, ids ...string) error {
 }
 
 // Store a resource
-func (db *Database) Put(resource Resource) error {
+func (db *Database) PutResource(resource Resource) error {
 	return db.storage.Update(func(tx *bolt.Tx) error {
 		id := resource.Id()
 		internal, isNew := db.ids.Internal(id, true)
@@ -145,6 +149,20 @@ func (db *Database) Put(resource Resource) error {
 		}
 		return tx.Bucket(RESOURCES_BUCKET).Put(encoded, resource.Bytes())
 	})
+}
+
+func (db *Database) getResource(id uint32) []byte {
+	var b []byte
+	db.storage.View(func(tx *bolt.Tx) error {
+		value := tx.Bucket(RESOURCES_BUCKET).Get(encodeId(id))
+		if value != nil {
+			// 1 - This is absolutely necessary
+			b = make([]byte, len(value))
+			copy(b, value)
+		}
+		return nil
+	})
+	return b
 }
 
 func (db *Database) Query(sort string) *Query {

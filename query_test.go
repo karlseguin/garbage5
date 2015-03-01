@@ -2,46 +2,49 @@ package garbage5
 
 import (
 	. "github.com/karlseguin/expect"
+	"strconv"
 	"testing"
 )
 
 type QueryTests struct {
-	*Database
+	db *Database
 }
 
 func Test_Query(t *testing.T) {
 	// all tests share the same DB instance since they only read from it.
-	// alternatively, make it possiblet o create a purely in-memory database
+	// alternatively, make it possible to create a purely in-memory database
 	// so that we can cheaply create them without any I/O
 	db := createDB()
-	db.CreateList("recent", "0s", "1s", "2s", "3s", "4s", "5s", "6s", "7s", "8s", "9s", "As", "Bs", "Cs", "Ds", "Es", "Fs")
+	db.CreateList("recent", "0r", "1r", "2r", "3r", "4r", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
+	for i := 1; i < 30; i++ {
+		id := strconv.Itoa(i) + "r"
+		db.PutResource(FakeResource{id, id})
+	}
 	Expectify(&QueryTests{db}, t)
 }
 
 func (qt QueryTests) ErrorOnInvalidSort() {
-	result, err := qt.Query("invalid").Execute()
+	result, err := qt.db.Query("invalid").Execute()
 	Expect(err).To.Equal(InvalidSortErr)
 	Expect(result).To.Equal(nil)
 }
 
 func (qt QueryTests) LimitsNumberOfResults() {
-	result, err := qt.Query("recent").Limit(3).Execute()
+	result, err := qt.db.Query("recent").Limit(3).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, err, "0s", "1s", "2s")
+	qt.assertResult(result, err, "1r", "2r", "3r")
 }
 
 func (qt QueryTests) HasNoMore() {
-	result, _ := qt.Query("recent").Limit(20).Execute()
+	result, _ := qt.db.Query("recent").Limit(20).Execute()
 	Expect(result.HasMore()).To.Equal(false)
-	Expect(result.Len()).To.Equal(16)
 }
 
 func (qt QueryTests) assertResult(result Result, err error, expected ...string) {
 	defer result.Release()
 	Expect(err).To.Equal(nil)
 	Expect(result.Len()).To.Equal(len(expected))
-	for i, id := range expected {
-		internal, _ := qt.ids.Internal(id, false)
-		Expect(result.Ids()[i]).To.Equal(internal)
+	for i, resource := range expected {
+		Expect(string(result.Resources()[i])).To.Equal(resource)
 	}
 }

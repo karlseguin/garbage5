@@ -30,21 +30,8 @@ func (_ DatabaseTests) CreatesASet() {
 	assertSet(openDB(), "test:set", "a-1", "b-2", "c-3")
 }
 
-func createDB() *Database {
-	os.Remove(TMP_PATH) //ignore failures
-	return openDB()
-}
-
-func openDB() *Database {
-	db, err := New(Configure().Path(TMP_PATH))
-	if err != nil {
-		panic(err)
-	}
-	return db
-}
-
 func assertList(db *Database, name string, expected ...string) {
-	list := db.List(name)
+	list := db.GetList(name)
 	Expect(list.Len()).To.Equal(len(expected))
 	i := 0
 
@@ -57,10 +44,23 @@ func assertList(db *Database, name string, expected ...string) {
 }
 
 func assertSet(db *Database, name string, expected ...string) {
-	set := db.Set(name)
+	set := db.GetSet(name)
 	Expect(set.Len()).To.Equal(len(expected))
 	for _, id := range expected {
 		internal, _ := db.ids.Internal(id, false)
 		Expect(set.Exists(internal)).To.Equal(true)
 	}
+}
+
+func createDB() *Database {
+	os.Remove(TMP_PATH) //ignore failures
+	return openDB()
+}
+
+func openDB() *Database {
+	db, err := New(Configure().Path(TMP_PATH))
+	if err != nil {
+		panic(err)
+	}
+	return db
 }

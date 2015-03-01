@@ -30,7 +30,7 @@ func (q *Query) Limit(limit uint32) *Query {
 
 // Executethe query
 func (q *Query) Execute() (Result, error) {
-	sort := q.db.List(q.sort)
+	sort := q.db.GetList(q.sort)
 	if sort == nil {
 		return nil, InvalidSortErr //todo
 	}
@@ -42,8 +42,9 @@ func (q *Query) Execute() (Result, error) {
 			result.more = true
 			return false
 		}
-		result.Add(id)
-		count++
+		if result.Add(id) {
+			count++
+		}
 		return true
 	})
 	return result, nil
