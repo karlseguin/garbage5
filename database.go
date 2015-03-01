@@ -3,6 +3,7 @@ package garbage5
 import (
 	"encoding/binary"
 	"github.com/karlseguin/bolt"
+	"github.com/karlseguin/garbage5/cache"
 	"gopkg.in/karlseguin/bytepool.v3"
 	"sync"
 )
@@ -21,16 +22,13 @@ type Resource interface {
 	Bytes() []byte
 }
 
-type Cache interface {
-	Fetch(id uint32, miss func() Resource) Resource
-}
-
 type Database struct {
 	storage *bolt.DB
 
 	ids      *IdMap
 	setLock  sync.RWMutex
 	listLock sync.RWMutex
+	cache    *cache.Cache
 	sets     map[string]Set
 	lists    map[string]List
 	results  *ResultPool
@@ -46,6 +44,7 @@ func New(c *Configuration) (*Database, error) {
 		ids:     NewIdMap(),
 		sets:    make(map[string]Set),
 		lists:   make(map[string]List),
+		cache:   cache.New(c.cacheSize),
 	}
 	database.results = NewResultPool(c.maxResults, 128, database.getResource)
 	if err := database.initialize(); err != nil {
@@ -137,6 +136,7 @@ func (db *Database) CreateSet(name string, ids ...string) error {
 }
 
 // Store a resource
+// todo: conditionally update the cache
 func (db *Database) PutResource(resource Resource) error {
 	return db.storage.Update(func(tx *bolt.Tx) error {
 		id := resource.Id()
@@ -151,18 +151,30 @@ func (db *Database) PutResource(resource Resource) error {
 	})
 }
 
+// TODO: reduce allocations
+// Since getResource is always cached, we're limited in our ability to reduce
+// allocation. The cache also reduces our need...but...still.
+// We can't use a pool. We could over-allocate outside of the transaction
+// (which would be nice), but we'd probably want to trim it since it's long-lived
+// and we don't want to waste the space.
+//
+// Furthermore, allocations around internal ids is starting to bug me. Those
+// can be pooled.
 func (db *Database) getResource(id uint32) []byte {
-	var b []byte
+	resource := db.cache.Get(id)
+	if resource != nil {
+		return resource
+	}
 	db.storage.View(func(tx *bolt.Tx) error {
 		value := tx.Bucket(RESOURCES_BUCKET).Get(encodeId(id))
 		if value != nil {
-			// 1 - This is absolutely necessary
-			b = make([]byte, len(value))
-			copy(b, value)
+			resource = make([]byte, len(value))
+			copy(resource, value)
 		}
 		return nil
 	})
-	return b
+	db.cache.Set(id, resource)
+	return resource
 }
 
 func (db *Database) Query(sort string) *Query {
