@@ -27,7 +27,7 @@ func (qt QueryTests) ErrorOnInvalidSort() {
 func (qt QueryTests) LimitsNumberOfResults() {
 	result, err := qt.Query("recent").Limit(3).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	assertResult(result, err, qt.Id("0s"), qt.Id("1s"), qt.Id("2s"))
+	qt.assertResult(result, err, "0s", "1s", "2s")
 }
 
 func (qt QueryTests) HasNoMore() {
@@ -36,11 +36,11 @@ func (qt QueryTests) HasNoMore() {
 	Expect(result.Len()).To.Equal(16)
 }
 
-func assertResult(result Result, err error, expected ...uint32) {
+func (qt QueryTests) assertResult(result Result, err error, expected ...string) {
 	defer result.Release()
 	Expect(err).To.Equal(nil)
 	Expect(result.Len()).To.Equal(len(expected))
 	for i, id := range expected {
-		Expect(result.Ids()[i]).To.Equal(id)
+		Expect(result.Ids()[i]).To.Equal(qt.ids.Internal(id, false))
 	}
 }

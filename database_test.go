@@ -49,7 +49,7 @@ func assertList(db *Database, name string, expected ...string) {
 	i := 0
 
 	list.Each(func(id uint32) bool {
-		Expect(id).To.Equal(db.Id(expected[i]))
+		Expect(id).To.Equal(db.ids.Internal(expected[i], false))
 		i++
 		return true
 	})
@@ -59,6 +59,6 @@ func assertSet(db *Database, name string, expected ...string) {
 	set := db.Set(name)
 	Expect(set.Len()).To.Equal(len(expected))
 	for _, id := range expected {
-		Expect(set.Exists(db.Id(id))).To.Equal(true)
+		Expect(set.Exists(db.ids.Internal(id, false))).To.Equal(true)
 	}
 }

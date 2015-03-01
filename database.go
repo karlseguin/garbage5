@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"github.com/karlseguin/bolt"
 	"gopkg.in/karlseguin/bytepool.v3"
-	"gopkg.in/karlseguin/idmap.v1"
 	"sync"
 )
 
@@ -23,7 +22,7 @@ type Resource interface {
 type Database struct {
 	storage *bolt.DB
 
-	ids      *idmap.Map32
+	ids      *IdMap
 	setLock  sync.RWMutex
 	listLock sync.RWMutex
 	sets     map[string]Set
@@ -38,11 +37,11 @@ func New(c *Configuration) (*Database, error) {
 	}
 	database := &Database{
 		storage: db,
-		ids:     idmap.New32(16),
+		ids:     NewIdMap(),
 		sets:    make(map[string]Set),
 		lists:   make(map[string]List),
-		results: NewResultPool(c.maxResults, 128),
 	}
+	database.results = NewResultPool(c.maxResults, 128)
 	if err := database.initialize(); err != nil {
 		db.Close()
 		return nil, err
@@ -74,11 +73,6 @@ func (db *Database) initialize() error {
 		db.lists[name] = NewList(ids)
 	})
 	return nil
-}
-
-// convert a string id into an internal id
-func (db *Database) Id(id string) uint32 {
-	return db.ids.Get(id, false)
 }
 
 // Returns the list. The list is unlocked; consumers are responsible for locking
@@ -143,7 +137,7 @@ func (db *Database) toInts(values []string) []uint32 {
 	l := len(values)
 	ids := make([]uint32, l)
 	for i := 0; i < l; i++ {
-		ids[i] = db.ids.Get(values[i], true)
+		ids[i] = db.ids.Internal(values[i], true)
 	}
 	return ids
 }
@@ -174,7 +168,7 @@ func (db *Database) loadIds(bucket []byte, fn func(name string, ids []uint32)) {
 			for i := 0 * l; i < l; i++ {
 				start := position + 1
 				end := start + int(v[position])
-				ids[i] = db.ids.Get(string(v[start:end]), true)
+				ids[i] = db.ids.Internal(string(v[start:end]), true)
 				position = end
 			}
 			fn(string(k), ids)
