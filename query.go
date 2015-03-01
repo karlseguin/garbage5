@@ -39,7 +39,6 @@ func (q *Query) Execute() (Result, error) {
 	count := 0
 	sort.Each(func(id uint32) bool {
 		if count == q.limit {
-			println("Aa")
 			result.more = true
 			return false
 		}
