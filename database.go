@@ -8,11 +8,12 @@ import (
 )
 
 var (
+	Endianness       = binary.LittleEndian
 	IDS_BUCKET       = []byte("ids")
 	SETS_BUCKET      = []byte("sets")
 	LISTS_BUCKET     = []byte("lists")
 	RESOURCES_BUCKET = []byte("resources")
-	bp               = bytepool.NewEndian(65536, 64, binary.LittleEndian)
+	bp               = bytepool.NewEndian(65536, 64, Endianness)
 )
 
 type Resource interface {
@@ -73,7 +74,7 @@ func (db *Database) initialize() error {
 	db.storage.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(IDS_BUCKET).Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
-			db.ids.load(string(k), binary.LittleEndian.Uint32(v))
+			db.ids.load(string(k), Endianness.Uint32(v))
 		}
 		return nil
 	})
@@ -162,7 +163,7 @@ func (db *Database) writeIds(bucket []byte, name string, ids []string) ([]uint32
 		internals[i] = internal
 		if isNew {
 			encoded := make([]byte, 4)
-			binary.LittleEndian.PutUint32(encoded, internal)
+			Endianness.PutUint32(encoded, internal)
 			newIds[id] = encoded
 			buffer.Write(encoded)
 		} else {
@@ -185,11 +186,11 @@ func (db *Database) loadLists(bucket []byte, fn func(name string, ids []uint32))
 	db.storage.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(bucket).Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
-			l := binary.LittleEndian.Uint32(v)
+			l := Endianness.Uint32(v)
 			ids := make([]uint32, l)
 			for i := 0 * l; i < l; i++ {
 				start := (i + 1) * 4
-				ids[i] = binary.LittleEndian.Uint32(v[start:])
+				ids[i] = Endianness.Uint32(v[start:])
 			}
 			fn(string(k), ids)
 		}
