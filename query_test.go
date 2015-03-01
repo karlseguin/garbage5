@@ -41,6 +41,7 @@ func (qt QueryTests) assertResult(result Result, err error, expected ...string) 
 	Expect(err).To.Equal(nil)
 	Expect(result.Len()).To.Equal(len(expected))
 	for i, id := range expected {
-		Expect(result.Ids()[i]).To.Equal(qt.ids.Internal(id, false))
+		internal, _ := qt.ids.Internal(id, false)
+		Expect(result.Ids()[i]).To.Equal(internal)
 	}
 }

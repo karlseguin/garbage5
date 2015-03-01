@@ -8,10 +8,11 @@ import (
 )
 
 var (
-	SETS      = []byte("sets")
-	LISTS     = []byte("lists")
-	RESOURCES = []byte("resources")
-	bp        = bytepool.NewEndian(65536, 64, binary.LittleEndian)
+	IDS_BUCKET       = []byte("ids")
+	SETS_BUCKET      = []byte("sets")
+	LISTS_BUCKET     = []byte("lists")
+	RESOURCES_BUCKET = []byte("resources")
+	bp               = bytepool.NewEndian(65536, 64, binary.LittleEndian)
 )
 
 type Resource interface {
@@ -51,13 +52,16 @@ func New(c *Configuration) (*Database, error) {
 
 func (db *Database) initialize() error {
 	err := db.storage.Update(func(tx *bolt.Tx) error {
-		if _, err := tx.CreateBucketIfNotExists(SETS); err != nil {
+		if _, err := tx.CreateBucketIfNotExists(IDS_BUCKET); err != nil {
 			return err
 		}
-		if _, err := tx.CreateBucketIfNotExists(LISTS); err != nil {
+		if _, err := tx.CreateBucketIfNotExists(SETS_BUCKET); err != nil {
 			return err
 		}
-		if _, err := tx.CreateBucketIfNotExists(RESOURCES); err != nil {
+		if _, err := tx.CreateBucketIfNotExists(LISTS_BUCKET); err != nil {
+			return err
+		}
+		if _, err := tx.CreateBucketIfNotExists(RESOURCES_BUCKET); err != nil {
 			return err
 		}
 		return nil
@@ -66,10 +70,18 @@ func (db *Database) initialize() error {
 		return err
 	}
 
-	db.loadIds(SETS, func(name string, ids []uint32) {
+	db.storage.View(func(tx *bolt.Tx) error {
+		c := tx.Bucket(IDS_BUCKET).Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			db.ids.load(string(k), binary.LittleEndian.Uint32(v))
+		}
+		return nil
+	})
+
+	db.loadLists(SETS_BUCKET, func(name string, ids []uint32) {
 		db.sets[name] = NewSet(ids)
 	})
-	db.loadIds(LISTS, func(name string, ids []uint32) {
+	db.loadLists(LISTS_BUCKET, func(name string, ids []uint32) {
 		db.lists[name] = NewList(ids)
 	})
 	return nil
@@ -95,10 +107,11 @@ func (db *Database) Set(name string) Set {
 
 // Creates, or overwirtes, an in-memory and on-disk list
 func (db *Database) CreateList(name string, ids ...string) error {
-	if err := db.writeIds(LISTS, name, ids); err != nil {
+	internal, err := db.writeIds(LISTS_BUCKET, name, ids)
+	if err != nil {
 		return err
 	}
-	list := NewList(db.toInts(ids))
+	list := NewList(internal)
 	db.listLock.Lock()
 	db.lists[name] = list
 	db.listLock.Unlock()
@@ -107,10 +120,11 @@ func (db *Database) CreateList(name string, ids ...string) error {
 
 // Creates, or overwirtes, an in-memory and on-disk set
 func (db *Database) CreateSet(name string, ids ...string) error {
-	if err := db.writeIds(SETS, name, ids); err != nil {
+	internal, err := db.writeIds(SETS_BUCKET, name, ids)
+	if err != nil {
 		return err
 	}
-	set := NewSet(db.toInts(ids))
+	set := NewSet(internal)
 	db.setLock.Lock()
 	db.sets[name] = set
 	db.setLock.Unlock()
@@ -120,7 +134,7 @@ func (db *Database) CreateSet(name string, ids ...string) error {
 // Store a resource
 func (db *Database) Put(resource Resource) error {
 	return db.storage.Update(func(tx *bolt.Tx) error {
-		return tx.Bucket(RESOURCES).Put([]byte(resource.Id()), resource.Bytes())
+		return tx.Bucket(RESOURCES_BUCKET).Put([]byte(resource.Id()), resource.Bytes())
 	})
 }
 
@@ -133,43 +147,49 @@ func (db *Database) Close() error {
 	return db.storage.Close()
 }
 
-func (db *Database) toInts(values []string) []uint32 {
-	l := len(values)
-	ids := make([]uint32, l)
-	for i := 0; i < l; i++ {
-		ids[i] = db.ids.Internal(values[i], true)
-	}
-	return ids
-}
-
-func (db *Database) writeIds(bucket []byte, name string, ids []string) error {
+func (db *Database) writeIds(bucket []byte, name string, ids []string) ([]uint32, error) {
 	l := len(ids)
+	internals := make([]uint32, l)
+	newIds := make(map[string][]byte)
+
 	buffer := bp.Checkout()
 	defer buffer.Release()
 	buffer.WriteUint32(uint32(l))
+
 	for i := 0; i < l; i++ {
 		id := ids[i]
-		buffer.WriteByte(byte(len(id)))
-		buffer.Write([]byte(id))
+		internal, isNew := db.ids.Internal(id, true)
+		internals[i] = internal
+		if isNew {
+			encoded := make([]byte, 4)
+			binary.LittleEndian.PutUint32(encoded, internal)
+			newIds[id] = encoded
+			buffer.Write(encoded)
+		} else {
+			buffer.WriteUint32(internal)
+		}
 	}
 
-	return db.storage.Update(func(tx *bolt.Tx) error {
+	return internals, db.storage.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(IDS_BUCKET)
+		for id, internal := range newIds {
+			if err := b.Put([]byte(id), internal); err != nil {
+				return err
+			}
+		}
 		return tx.Bucket(bucket).Put([]byte(name), buffer.Bytes())
 	})
 }
 
-func (db *Database) loadIds(bucket []byte, fn func(name string, ids []uint32)) {
+func (db *Database) loadLists(bucket []byte, fn func(name string, ids []uint32)) {
 	db.storage.View(func(tx *bolt.Tx) error {
 		c := tx.Bucket(bucket).Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
 			l := binary.LittleEndian.Uint32(v)
 			ids := make([]uint32, l)
-			position := 4
 			for i := 0 * l; i < l; i++ {
-				start := position + 1
-				end := start + int(v[position])
-				ids[i] = db.ids.Internal(string(v[start:end]), true)
-				position = end
+				start := (i + 1) * 4
+				ids[i] = binary.LittleEndian.Uint32(v[start:])
 			}
 			fn(string(k), ids)
 		}

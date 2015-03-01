@@ -13,9 +13,9 @@ func Test_IdMap(t *testing.T) {
 
 func (_ IdMapTests) CreatesNewIds() {
 	ids := NewIdMap()
-	Expect(ids.Internal("a", true)).To.Equal(uint32(1))
-	Expect(ids.Internal("b", true)).To.Equal(uint32(2))
-	Expect(ids.Internal("c", true)).To.Equal(uint32(3))
+	Expect(ids.Internal("a", true)).To.Equal(uint32(1), true)
+	Expect(ids.Internal("b", true)).To.Equal(uint32(2), true)
+	Expect(ids.Internal("c", true)).To.Equal(uint32(3), true)
 }
 
 func (_ IdMapTests) LooksUpExistingIds() {
@@ -24,10 +24,10 @@ func (_ IdMapTests) LooksUpExistingIds() {
 	ids.Internal("b", true)
 	ids.Internal("c", true)
 
-	Expect(ids.Internal("a", false)).To.Equal(uint32(1))
-	Expect(ids.Internal("a", true)).To.Equal(uint32(1))
-	Expect(ids.Internal("c", false)).To.Equal(uint32(3))
-	Expect(ids.Internal("c", true)).To.Equal(uint32(3))
+	Expect(ids.Internal("a", false)).To.Equal(uint32(1), false)
+	Expect(ids.Internal("a", true)).To.Equal(uint32(1), false)
+	Expect(ids.Internal("c", false)).To.Equal(uint32(3), false)
+	Expect(ids.Internal("c", true)).To.Equal(uint32(3), false)
 }
 
 func (_ IdMapTests) ReversesIdLookup() {

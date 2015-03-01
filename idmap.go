@@ -18,12 +18,21 @@ func NewIdMap() *IdMap {
 	}
 }
 
-func (m *IdMap) Internal(external string, create bool) uint32 {
+// not thread safe. Call on init and never again
+func (m *IdMap) load(external string, internal uint32) {
+	m.etoi[external] = internal
+	m.itoe[internal] = external
+	if internal > m.counter {
+		m.counter = internal
+	}
+}
+
+func (m *IdMap) Internal(external string, create bool) (uint32, bool) {
 	m.RLock()
 	internal, exists := m.etoi[external]
 	m.RUnlock()
 	if exists || create == false {
-		return internal
+		return internal, false
 	}
 
 	defer m.Unlock()
@@ -35,7 +44,7 @@ func (m *IdMap) Internal(external string, create bool) uint32 {
 		m.etoi[external] = internal
 		m.itoe[internal] = external
 	}
-	return internal
+	return internal, !exists
 }
 
 func (m *IdMap) External(internal uint32) string {
