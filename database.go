@@ -140,7 +140,9 @@ func (db *Database) CreateSet(name string, ids ...string) error {
 func (db *Database) PutResource(resource Resource) error {
 	id, bytes := resource.Id(), resource.Bytes()
 	internal, isNew := db.ids.Internal(id, true)
-	encoded := encodeId(internal)
+	encoded := db.ids.Encode(internal)
+	defer db.ids.Release(encoded)
+
 	err := db.storage.Update(func(tx *bolt.Tx) error {
 		if isNew {
 			if err := tx.Bucket(IDS_BUCKET).Put([]byte(id), encoded); err != nil {
@@ -170,8 +172,10 @@ func (db *Database) getResource(id uint32) []byte {
 	if resource != nil {
 		return resource
 	}
+	encoded := db.ids.Encode(id)
+	defer db.ids.Release(encoded)
 	db.storage.View(func(tx *bolt.Tx) error {
-		value := tx.Bucket(RESOURCES_BUCKET).Get(encodeId(id))
+		value := tx.Bucket(RESOURCES_BUCKET).Get(encoded)
 		if value != nil {
 			resource = make([]byte, len(value))
 			copy(resource, value)
@@ -241,7 +245,6 @@ func (db *Database) loadLists(bucket []byte, fn func(name string, ids []uint32))
 }
 
 func encodeId(id uint32) []byte {
-	//pool?
 	encoded := make([]byte, 4)
 	Endianness.PutUint32(encoded, id)
 	return encoded

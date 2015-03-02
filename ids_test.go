@@ -41,3 +41,9 @@ func (_ IdMapTests) ReversesIdLookup() {
 	Expect(ids.External(3)).To.Equal("c")
 	Expect(ids.External(4)).To.Equal("")
 }
+
+func (_ IdMapTests) EncodesIds() {
+	ids := NewIdMap()
+	encoded := ids.Encode(449)
+	Expect(encoded).To.Equal([]byte{193, 1, 0, 0})
+}
