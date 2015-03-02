@@ -44,9 +44,9 @@ func New(c *Configuration) (*Database, error) {
 		sets:    make(map[string]Set),
 		lists:   make(map[string]List),
 		cache:   cache.New(c.cacheSize),
+		results: NewResultPool(c.maxResults, 128),
 	}
 	database.ids = NewIdMap(database.writeId)
-	database.results = NewResultPool(c.maxResults, 128, database.getResource)
 
 	if err := database.initialize(); err != nil {
 		db.Close()

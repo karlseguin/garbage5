@@ -29,6 +29,8 @@ func (l *FixedList) Len() int {
 }
 
 func (l *FixedList) Each(fn func(id uint32) bool) {
+	defer l.RUnlock()
+	l.RLock()
 	ll := len(l.ids)
 	for i := 0; i < ll; i++ {
 		if fn(l.ids[i]) == false {

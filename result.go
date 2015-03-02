@@ -8,20 +8,17 @@ type Result interface {
 	HasMore() bool
 }
 
-type ResourceFetcher func(id uint32) []byte
-
 type ResultPool struct {
 	list chan *NormalResult
 }
 
-func NewResultPool(max, count int, fetcher ResourceFetcher) *ResultPool {
+func NewResultPool(max, count int) *ResultPool {
 	pool := &ResultPool{
 		list: make(chan *NormalResult, count),
 	}
 	for i := 0; i < count; i++ {
 		pool.list <- &NormalResult{
 			pool:      pool,
-			fetcher:   fetcher,
 			ids:       make([]uint32, max),
 			resources: make([][]byte, max),
 		}
@@ -37,20 +34,14 @@ type NormalResult struct {
 	length    int
 	more      bool
 	ids       []uint32
-	fetcher   ResourceFetcher
 	resources [][]byte
 	pool      *ResultPool
 }
 
-func (r *NormalResult) Add(id uint32) bool {
-	resource := r.fetcher(id)
-	if resource == nil {
-		return false
-	}
+func (r *NormalResult) Add(id uint32, resource []byte) {
 	r.ids[r.length] = id
 	r.resources[r.length] = resource
 	r.length += 1
-	return true
 }
 
 func (r *NormalResult) Len() int {

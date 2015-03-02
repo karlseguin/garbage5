@@ -35,6 +35,12 @@ func (qt QueryTests) LimitsNumberOfResults() {
 	qt.assertResult(result, err, "1r", "2r", "3r")
 }
 
+func (qt QueryTests) AppliesAnOffset() {
+	result, err := qt.db.Query("recent").Offset(2).Limit(2).Execute()
+	Expect(result.HasMore()).To.Equal(true)
+	qt.assertResult(result, err, "3r", "4r")
+}
+
 func (qt QueryTests) HasNoMore() {
 	result, _ := qt.db.Query("recent").Limit(20).Execute()
 	Expect(result.HasMore()).To.Equal(false)
