@@ -12,29 +12,28 @@ func Test_IdMap(t *testing.T) {
 }
 
 func (_ IdMapTests) CreatesNewIds() {
-	ids := NewIdMap()
-	Expect(ids.Internal("a", true)).To.Equal(uint32(1), true)
-	Expect(ids.Internal("b", true)).To.Equal(uint32(2), true)
-	Expect(ids.Internal("c", true)).To.Equal(uint32(3), true)
+	ids := NewIdMap(NullIdWriter)
+	Expect(ids.Internal("a")).To.Equal(uint32(1), []byte{1, 0, 0, 0})
+	Expect(ids.Internal("b")).To.Equal(uint32(2), []byte{2, 0, 0, 0})
+	Expect(ids.Internal("c")).To.Equal(uint32(3), []byte{3, 0, 0, 0})
 }
 
 func (_ IdMapTests) LooksUpExistingIds() {
-	ids := NewIdMap()
-	ids.Internal("a", true)
-	ids.Internal("b", true)
-	ids.Internal("c", true)
+	ids := NewIdMap(NullIdWriter)
+	ids.Internal("a")
+	ids.Internal("b")
+	ids.Internal("c")
 
-	Expect(ids.Internal("a", false)).To.Equal(uint32(1), false)
-	Expect(ids.Internal("a", true)).To.Equal(uint32(1), false)
-	Expect(ids.Internal("c", false)).To.Equal(uint32(3), false)
-	Expect(ids.Internal("c", true)).To.Equal(uint32(3), false)
+	Expect(ids.Internal("a")).To.Equal(uint32(1), []byte{1, 0, 0, 0})
+	Expect(ids.Internal("a")).To.Equal(uint32(1), []byte{1, 0, 0, 0})
+	Expect(ids.Internal("c")).To.Equal(uint32(3), []byte{3, 0, 0, 0})
 }
 
 func (_ IdMapTests) ReversesIdLookup() {
-	ids := NewIdMap()
-	ids.Internal("a", true)
-	ids.Internal("b", true)
-	ids.Internal("c", true)
+	ids := NewIdMap(NullIdWriter)
+	ids.Internal("a")
+	ids.Internal("b")
+	ids.Internal("c")
 
 	Expect(ids.External(1)).To.Equal("a")
 	Expect(ids.External(2)).To.Equal("b")
@@ -42,8 +41,10 @@ func (_ IdMapTests) ReversesIdLookup() {
 	Expect(ids.External(4)).To.Equal("")
 }
 
-func (_ IdMapTests) EncodesIds() {
-	ids := NewIdMap()
-	encoded := ids.Encode(449)
-	Expect(encoded).To.Equal([]byte{193, 1, 0, 0})
+func (_ IdMapTests) GetsBytesForId() {
+	ids := NewIdMap(NullIdWriter)
+	id, _ := ids.Internal("44")
+	Expect(ids.Bytes(id)).To.Equal([]byte{1, 0, 0, 0})
 }
+
+func NullIdWriter(k, v []byte) {}

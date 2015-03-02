@@ -41,12 +41,13 @@ func New(c *Configuration) (*Database, error) {
 	}
 	database := &Database{
 		storage: db,
-		ids:     NewIdMap(),
 		sets:    make(map[string]Set),
 		lists:   make(map[string]List),
 		cache:   cache.New(c.cacheSize),
 	}
+	database.ids = NewIdMap(database.writeId)
 	database.results = NewResultPool(c.maxResults, 128, database.getResource)
+
 	if err := database.initialize(); err != nil {
 		db.Close()
 		return nil, err
@@ -139,16 +140,9 @@ func (db *Database) CreateSet(name string, ids ...string) error {
 // todo: conditionally update the cache
 func (db *Database) PutResource(resource Resource) error {
 	id, bytes := resource.Id(), resource.Bytes()
-	internal, isNew := db.ids.Internal(id, true)
-	encoded := db.ids.Encode(internal)
-	defer db.ids.Release(encoded)
+	internal, encoded := db.ids.Internal(id)
 
 	err := db.storage.Update(func(tx *bolt.Tx) error {
-		if isNew {
-			if err := tx.Bucket(IDS_BUCKET).Put([]byte(id), encoded); err != nil {
-				return err
-			}
-		}
 		return tx.Bucket(RESOURCES_BUCKET).Put(encoded, bytes)
 	})
 	if err != nil {
@@ -172,8 +166,7 @@ func (db *Database) getResource(id uint32) []byte {
 	if resource != nil {
 		return resource
 	}
-	encoded := db.ids.Encode(id)
-	defer db.ids.Release(encoded)
+	encoded := db.ids.Bytes(id)
 	db.storage.View(func(tx *bolt.Tx) error {
 		value := tx.Bucket(RESOURCES_BUCKET).Get(encoded)
 		if value != nil {
@@ -198,7 +191,6 @@ func (db *Database) Close() error {
 func (db *Database) writeIds(bucket []byte, name string, ids []string) ([]uint32, error) {
 	l := len(ids)
 	internals := make([]uint32, l)
-	newIds := make(map[string][]byte)
 
 	buffer := bp.Checkout()
 	defer buffer.Release()
@@ -206,24 +198,12 @@ func (db *Database) writeIds(bucket []byte, name string, ids []string) ([]uint32
 
 	for i := 0; i < l; i++ {
 		id := ids[i]
-		internal, isNew := db.ids.Internal(id, true)
+		internal, bytes := db.ids.Internal(id)
 		internals[i] = internal
-		if isNew {
-			encoded := encodeId(internal)
-			newIds[id] = encoded
-			buffer.Write(encoded)
-		} else {
-			buffer.WriteUint32(internal)
-		}
+		buffer.Write(bytes)
 	}
 
 	return internals, db.storage.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket(IDS_BUCKET)
-		for id, internal := range newIds {
-			if err := b.Put([]byte(id), internal); err != nil {
-				return err
-			}
-		}
 		return tx.Bucket(bucket).Put([]byte(name), buffer.Bytes())
 	})
 }
@@ -244,8 +224,8 @@ func (db *Database) loadLists(bucket []byte, fn func(name string, ids []uint32))
 	})
 }
 
-func encodeId(id uint32) []byte {
-	encoded := make([]byte, 4)
-	Endianness.PutUint32(encoded, id)
-	return encoded
+func (db *Database) writeId(key, value []byte) {
+	db.storage.Update(func(tx *bolt.Tx) error {
+		return tx.Bucket(IDS_BUCKET).Put(key, value)
+	})
 }
