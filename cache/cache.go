@@ -58,6 +58,10 @@ func (c *Cache) Set(id uint32, data []byte) {
 	c.promotables <- entry
 }
 
+func (c *Cache) Update(id uint32, data []byte) {
+	c.bucket(id).update(id, data)
+}
+
 func (c *Cache) Delete(id uint32) {
 	if existing := c.bucket(id).delete(id); existing != nil {
 		c.deletables <- existing

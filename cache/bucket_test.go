@@ -43,6 +43,14 @@ func (_ BucketTests) SetsAnExistingItem() {
 	Expect(string(bucket.get(4321).data)).To.Equal("vegeta2")
 }
 
+func (_ BucketTests) UpdatesAnEntry() {
+	bucket := testBucket()
+	bucket.update(9001, []byte("goku2"))
+	bucket.update(9002, []byte("xx"))
+	Expect(string(bucket.get(9001).data)).To.Equal("goku2")
+	Expect(bucket.get(900)).To.Equal(nil)
+}
+
 func testBucket() *bucket {
 	b := &bucket{lookup: make(map[uint32]*Entry)}
 	b.lookup[9001] = &Entry{id: 9001, data: []byte("goku")}

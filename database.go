@@ -138,17 +138,22 @@ func (db *Database) CreateSet(name string, ids ...string) error {
 // Store a resource
 // todo: conditionally update the cache
 func (db *Database) PutResource(resource Resource) error {
-	return db.storage.Update(func(tx *bolt.Tx) error {
-		id := resource.Id()
-		internal, isNew := db.ids.Internal(id, true)
-		encoded := encodeId(internal)
+	id, bytes := resource.Id(), resource.Bytes()
+	internal, isNew := db.ids.Internal(id, true)
+	encoded := encodeId(internal)
+	err := db.storage.Update(func(tx *bolt.Tx) error {
 		if isNew {
 			if err := tx.Bucket(IDS_BUCKET).Put([]byte(id), encoded); err != nil {
 				return err
 			}
 		}
-		return tx.Bucket(RESOURCES_BUCKET).Put(encoded, resource.Bytes())
+		return tx.Bucket(RESOURCES_BUCKET).Put(encoded, bytes)
 	})
+	if err != nil {
+		return err
+	}
+	db.cache.Update(internal, bytes)
+	return nil
 }
 
 // TODO: reduce allocations

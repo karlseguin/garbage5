@@ -23,6 +23,14 @@ func (b *bucket) set(id uint32, entry *Entry) *Entry {
 	return existing
 }
 
+func (b *bucket) update(id uint32, data []byte) {
+	defer b.Unlock()
+	b.Lock()
+	if existing := b.lookup[id]; existing != nil {
+		existing.data = data
+	}
+}
+
 func (b *bucket) delete(id uint32) *Entry {
 	defer b.Unlock()
 	b.Lock()
