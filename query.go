@@ -43,9 +43,8 @@ func (q *Query) Execute() (Result, error) {
 	}
 
 	result := q.db.results.Checkout()
-	count := 0
 	sort.Each(func(id uint32) bool {
-		if count == q.limit {
+		if q.limit == 0 {
 			result.more = true
 			return false
 		}
@@ -55,7 +54,7 @@ func (q *Query) Execute() (Result, error) {
 		}
 		if q.offset == 0 {
 			result.Add(id, resource)
-			count++
+			q.limit--
 		} else {
 			q.offset--
 		}
