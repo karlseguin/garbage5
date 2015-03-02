@@ -8,6 +8,10 @@ type Result interface {
 	HasMore() bool
 }
 
+var (
+	EmptyResult = new(emptyResult)
+)
+
 type ResultPool struct {
 	list chan *NormalResult
 }
@@ -64,4 +68,27 @@ func (r *NormalResult) Release() {
 	r.length = 0
 	r.more = false
 	r.pool.list <- r
+}
+
+type emptyResult struct {
+}
+
+func (r *emptyResult) Release() {
+
+}
+
+func (r *emptyResult) Len() int {
+	return 0
+}
+
+func (r *emptyResult) Ids() []uint32 {
+	return nil
+}
+
+func (r *emptyResult) Resources() [][]byte {
+	return nil
+}
+
+func (r *emptyResult) HasMore() bool {
+	return false
 }

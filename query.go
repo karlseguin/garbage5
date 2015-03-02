@@ -1,26 +1,35 @@
 package garbage5
 
-import (
-	"errors"
-)
-
-var (
-	InvalidSortErr = errors.New("invalid query sort")
-)
-
-type Query struct {
-	sort   string
-	limit  int
-	offset int
-	db     *Database
+type QueryPool struct {
+	list chan *Query
 }
 
-func NewQuery(sort string, db *Database) *Query {
-	return &Query{
-		db:    db,
-		limit: 50,
-		sort:  sort,
+func NewQueryPool(db *Database) *QueryPool {
+	pool := &QueryPool{
+		list: make(chan *Query, 64),
 	}
+	for i := 0; i < 64; i++ {
+		pool.list <- &Query{
+			db:   db,
+			sets: make([]Set, 32),
+		}
+	}
+	return pool
+}
+
+func (p *QueryPool) Checkout(sort List) *Query {
+	q := <-p.list
+	q.sort = sort
+	return q
+}
+
+type Query struct {
+	limit    int
+	offset   int
+	setIndex int
+	sort     List
+	sets     []Set
+	db       *Database
 }
 
 // Specify the offset to start fetching results at
@@ -35,15 +44,22 @@ func (q *Query) Limit(limit uint32) *Query {
 	return q
 }
 
-// Executethe query
-func (q *Query) Execute() (Result, error) {
-	sort := q.db.GetList(q.sort)
-	if sort == nil {
-		return nil, InvalidSortErr
+//apply the set to the result
+func (q *Query) And(set string) *Query {
+	if s := q.db.GetSet(set); s != nil {
+		q.sets[q.setIndex] = s
+		q.setIndex++
 	}
+	return q
+}
 
+// Executethe query
+func (q *Query) Execute() Result {
+	if q.sort == nil {
+		return EmptyResult
+	}
 	result := q.db.results.Checkout()
-	sort.Each(func(id uint32) bool {
+	q.sort.Each(func(id uint32) bool {
 		if q.limit == 0 {
 			result.more = true
 			return false
@@ -60,5 +76,11 @@ func (q *Query) Execute() (Result, error) {
 		}
 		return true
 	})
-	return result, nil
+	return result
+}
+
+func (q *Query) Release() {
+	q.offset = 0
+	q.limit = 50
+	q.setIndex = 0
 }

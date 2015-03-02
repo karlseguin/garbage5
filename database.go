@@ -31,6 +31,7 @@ type Database struct {
 	cache    *cache.Cache
 	sets     map[string]Set
 	lists    map[string]List
+	queries  *QueryPool
 	results  *ResultPool
 }
 
@@ -46,6 +47,7 @@ func New(c *Configuration) (*Database, error) {
 		cache:   cache.New(c.cacheSize),
 		results: NewResultPool(c.maxResults, 128),
 	}
+	database.queries = NewQueryPool(database)
 	database.ids = NewIdMap(database.writeId)
 
 	if err := database.initialize(); err != nil {
@@ -180,7 +182,7 @@ func (db *Database) getResource(id uint32) []byte {
 }
 
 func (db *Database) Query(sort string) *Query {
-	return NewQuery(sort, db)
+	return db.queries.Checkout(db.GetList(sort))
 }
 
 // Close the database

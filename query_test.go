@@ -23,32 +23,30 @@ func Test_Query(t *testing.T) {
 	Expectify(&QueryTests{db}, t)
 }
 
-func (qt QueryTests) ErrorOnInvalidSort() {
-	result, err := qt.db.Query("invalid").Execute()
-	Expect(err).To.Equal(InvalidSortErr)
-	Expect(result).To.Equal(nil)
+func (qt QueryTests) EmptyForInvalidSort() {
+	result := qt.db.Query("invalid").Execute()
+	Expect(result.Len()).To.Equal(0)
 }
 
 func (qt QueryTests) LimitsNumberOfResults() {
-	result, err := qt.db.Query("recent").Limit(3).Execute()
+	result := qt.db.Query("recent").Limit(3).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, err, "1r", "2r", "3r")
+	qt.assertResult(result, "1r", "2r", "3r")
 }
 
 func (qt QueryTests) AppliesAnOffset() {
-	result, err := qt.db.Query("recent").Offset(2).Limit(2).Execute()
+	result := qt.db.Query("recent").Offset(2).Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, err, "3r", "4r")
+	qt.assertResult(result, "3r", "4r")
 }
 
 func (qt QueryTests) HasNoMore() {
-	result, _ := qt.db.Query("recent").Limit(20).Execute()
+	result := qt.db.Query("recent").Limit(20).Execute()
 	Expect(result.HasMore()).To.Equal(false)
 }
 
-func (qt QueryTests) assertResult(result Result, err error, expected ...string) {
+func (qt QueryTests) assertResult(result Result, expected ...string) {
 	defer result.Release()
-	Expect(err).To.Equal(nil)
 	Expect(result.Len()).To.Equal(len(expected))
 	for i, resource := range expected {
 		Expect(string(result.Resources()[i])).To.Equal(resource)
