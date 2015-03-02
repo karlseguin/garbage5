@@ -21,36 +21,27 @@ func (_ BucketTests) GetHit() {
 	Expect(string(bucket.get(9001).data)).To.Equal("goku")
 }
 
-//
-// func (_ BucketTests) Delete() {
-// 	bucket := testBucket()
-// 	bucket.delete("power", "level")
-// 	Expect(bucket.get("power", "level")).To.Equal(nil)
-// 	// assertEntry(bucket, "power", "rating", "high")
-// }
-//
-// func (_ BucketTests) DeleteAll() {
-// 	bucket := testBucket()
-// 	bucket.deleteAll("power")
-// 	Expect(bucket.get("power", "level")).To.Equal(nil)
-// 	Expect(bucket.get("power", "rating")).To.Equal(nil)
-// }
-//
-// func (_ BucketTests) SetsANewBucketItem() {
-// 	bucket := testBucket()
-// 	entry := buildEntry("flow")
-// 	Expect(bucket.set("spice", "must", entry)).To.Equal(nil)
-// 	assertEntry(bucket, "power", "level", "over 9000!")
-// 	assertEntry(bucket, "spice", "must", "flow")
-// }
-//
-// func (_ BucketTests) SetsAnExistingItem() {
-// 	bucket := testBucket()
-// 	entry := buildEntry("9002")
-// 	existing := bucket.set("power", "level", entry)
-// 	assertResponse(existing, "over 9000!")
-// 	assertEntry(bucket, "power", "level", "9002")
-// }
+func (_ BucketTests) Delete() {
+	bucket := testBucket()
+	bucket.delete(9001)
+	Expect(bucket.get(9001)).To.Equal(nil)
+}
+
+func (_ BucketTests) SetsANewBucketItem() {
+	bucket := testBucket()
+	entry := &Entry{id: 1234, data: []byte("vegeta")}
+	Expect(bucket.set(1234, entry)).To.Equal(nil)
+	Expect(string(bucket.get(1234).data)).To.Equal("vegeta")
+}
+
+func (_ BucketTests) SetsAnExistingItem() {
+	bucket := testBucket()
+	entry := &Entry{id: 4321, data: []byte("vegeta")}
+	bucket.set(4321, entry)
+	existing := bucket.set(4321, &Entry{id: 4321, data: []byte("vegeta2")})
+	Expect(string(existing.data)).To.Equal("vegeta")
+	Expect(string(bucket.get(4321).data)).To.Equal("vegeta2")
+}
 
 func testBucket() *bucket {
 	b := &bucket{lookup: make(map[uint32]*Entry)}
