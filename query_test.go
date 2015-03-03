@@ -21,6 +21,7 @@ func Test_Query(t *testing.T) {
 	db.CreateSet("set-3", "4r", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
 	db.CreateSet("set-4", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
 	db.CreateSet("set-5", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
+	db.CreateSet("set-6", "1r")
 	for i := 1; i < 30; i++ {
 		id := strconv.Itoa(i) + "r"
 		db.PutResource(FakeResource{id, id})
@@ -47,7 +48,7 @@ func (qt QueryTests) AppliesAnOffset() {
 }
 
 func (qt QueryTests) HasNoMore() {
-	result := qt.db.Query("recent").Limit(20).Execute()
+	result := qt.db.Query("recent").Limit(15).Execute()
 	Expect(result.HasMore()).To.Equal(false)
 }
 
@@ -85,6 +86,12 @@ func (qt QueryTests) Empty() {
 	result := qt.db.Query("recent").And("set-0").Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	Expect(result.Len()).To.Equal(0)
+}
+
+func (qt QueryTests) Small() {
+	result := qt.db.Query("recent").And("set-6").Execute()
+	Expect(result.HasMore()).To.Equal(false)
+	qt.assertResult(result, "1r")
 }
 
 func (qt QueryTests) assertResult(result Result, expected ...string) {

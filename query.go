@@ -10,8 +10,9 @@ func NewQueryPool(db *Database) *QueryPool {
 	}
 	for i := 0; i < 64; i++ {
 		pool.list <- &Query{
-			db:   db,
-			sets: make([]Set, 32),
+			db:    db,
+			limit: 50,
+			sets:  make([]Set, 32),
 		}
 	}
 	return pool
