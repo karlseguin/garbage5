@@ -94,6 +94,12 @@ func (qt QueryTests) Small() {
 	qt.assertResult(result, "1r")
 }
 
+func (qt QueryTests) ZeroLimit() {
+	result := qt.db.Query("recent").Limit(0).Execute()
+	Expect(result.HasMore()).To.Equal(false)
+	Expect(result.Len()).To.Equal(0)
+}
+
 func (qt QueryTests) assertResult(result Result, expected ...string) {
 	defer result.Release()
 	Expect(result.Len()).To.Equal(len(expected))

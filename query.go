@@ -55,7 +55,7 @@ func (q *Query) And(set string) *Query {
 
 // Executethe query
 func (q *Query) Execute() Result {
-	if q.sort == nil {
+	if q.sort == nil || q.limit == 0 {
 		return EmptyResult
 	}
 	l := q.setIndex
