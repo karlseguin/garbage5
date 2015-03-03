@@ -47,7 +47,7 @@ func New(c *Configuration) (*Database, error) {
 		cache:   cache.New(c.cacheSize),
 		results: NewResultPool(c.maxResults, 128),
 	}
-	database.queries = NewQueryPool(database)
+	database.queries = NewQueryPool(database, c.maxSets)
 	database.ids = NewIdMap(database.writeId)
 
 	if err := database.initialize(); err != nil {

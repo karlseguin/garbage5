@@ -4,7 +4,7 @@ type QueryPool struct {
 	list chan *Query
 }
 
-func NewQueryPool(db *Database) *QueryPool {
+func NewQueryPool(db *Database, maxSets int) *QueryPool {
 	pool := &QueryPool{
 		list: make(chan *Query, 64),
 	}
@@ -12,7 +12,7 @@ func NewQueryPool(db *Database) *QueryPool {
 		pool.list <- &Query{
 			db:    db,
 			limit: 50,
-			sets:  make([]Set, 32),
+			sets:  &Sets{s: make([]Set, maxSets)},
 		}
 	}
 	return pool
@@ -25,12 +25,11 @@ func (p *QueryPool) Checkout(sort List) *Query {
 }
 
 type Query struct {
-	limit    int
-	offset   int
-	setIndex int
-	sort     List
-	sets     []Set
-	db       *Database
+	limit  int
+	offset int
+	sort   List
+	sets   *Sets
+	db     *Database
 }
 
 // Specify the offset to start fetching results at
@@ -47,9 +46,7 @@ func (q *Query) Limit(limit uint32) *Query {
 
 //apply the set to the result
 func (q *Query) And(set string) *Query {
-	s := q.db.GetSet(set)
-	q.sets[q.setIndex] = s
-	q.setIndex++
+	q.sets.Add(q.db.GetSet(set))
 	return q
 }
 
@@ -58,17 +55,15 @@ func (q *Query) Execute() Result {
 	if q.sort == nil || q.limit == 0 {
 		return EmptyResult
 	}
-	l := q.setIndex
+	l := q.sets.l
 	if l == 0 {
 		return q.execute(func(id uint32) bool { return true })
 	}
 
-	for i := 1; i < l; i++ {
-		for j := i; j > 0 && q.sets[j-1].Len() > q.sets[j].Len(); j-- {
-			q.sets[j], q.sets[j-1] = q.sets[j-1], q.sets[j]
-		}
-	}
-	if q.sets[0].Len() == 0 {
+	q.sets.RLock()
+	defer q.sets.RUnlock()
+	q.sets.Sort()
+	if q.sets.s[0].Len() == 0 {
 		return EmptyResult
 	}
 
@@ -89,24 +84,24 @@ func (q *Query) Execute() Result {
 }
 
 func (q *Query) oneSetFilter(id uint32) bool {
-	return q.sets[0].Exists(id)
+	return q.sets.s[0].Exists(id)
 }
 
 func (q *Query) twoSetsFilter(id uint32) bool {
-	return q.sets[0].Exists(id) && q.sets[1].Exists(id)
+	return q.sets.s[0].Exists(id) && q.sets.s[1].Exists(id)
 }
 
 func (q *Query) threeSetsFilter(id uint32) bool {
-	return q.sets[0].Exists(id) && q.sets[1].Exists(id) && q.sets[2].Exists(id)
+	return q.sets.s[0].Exists(id) && q.sets.s[1].Exists(id) && q.sets.s[2].Exists(id)
 }
 
 func (q *Query) fourSetsFilter(id uint32) bool {
-	return q.sets[0].Exists(id) && q.sets[1].Exists(id) && q.sets[2].Exists(id) && q.sets[3].Exists(id)
+	return q.sets.s[0].Exists(id) && q.sets.s[1].Exists(id) && q.sets.s[2].Exists(id) && q.sets.s[3].Exists(id)
 }
 
 func (q *Query) multiSetsFilter(id uint32) bool {
-	for i := 0; i < q.setIndex; i++ {
-		if q.sets[i].Exists(id) == false {
+	for i := 0; i < q.sets.l; i++ {
+		if q.sets.s[i].Exists(id) == false {
 			return false
 		}
 	}
@@ -140,5 +135,5 @@ func (q *Query) execute(filter func(id uint32) bool) Result {
 func (q *Query) Release() {
 	q.offset = 0
 	q.limit = 50
-	q.setIndex = 0
+	q.sets.l = 0
 }

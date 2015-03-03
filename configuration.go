@@ -2,12 +2,14 @@ package garbage5
 
 type Configuration struct {
 	path       string
+	maxSets    int
 	maxResults int
 	cacheSize  int
 }
 
 func Configure() *Configuration {
 	return &Configuration{
+		maxSets:    32,
 		maxResults: 100,
 		cacheSize:  67108864,
 		path:       "/tmp/garbage5.db",
@@ -23,14 +25,21 @@ func (c *Configuration) Path(path string) *Configuration {
 
 // Maximum number of results we'll ever request from a query
 // [100]
-func (c *Configuration) MaxResults(max uint32) *Configuration {
+func (c *Configuration) MaxResults(max uint16) *Configuration {
 	c.maxResults = int(max)
 	return c
 }
 
 // The size, in bytes, to reserve for a caching resources
-// [67108864 (64MB)
+// [67108864 (64MB)]
 func (c *Configuration) CacheSize(size uint64) *Configuration {
 	c.cacheSize = int(size)
+	return c
+}
+
+// The maximum number of sets a single query will be composed of
+// [32]
+func (c *Configuration) MaxSets(max uint8) *Configuration {
+	c.maxSets = int(max)
 	return c
 }

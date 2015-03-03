@@ -18,6 +18,36 @@ type Set interface {
 	Exists(value uint32) bool
 }
 
+type Sets struct {
+	l int
+	s []Set
+}
+
+func (sets *Sets) Add(set Set) {
+	sets.s[sets.l] = set
+	sets.l++
+}
+
+func (sets *Sets) RLock() {
+	for i := 0; i < sets.l; i++ {
+		sets.s[i].RLock()
+	}
+}
+
+func (sets *Sets) RUnlock() {
+	for i := 0; i < sets.l; i++ {
+		sets.s[i].RUnlock()
+	}
+}
+
+func (sets *Sets) Sort() {
+	for i := 1; i < sets.l; i++ {
+		for j := i; j > 0 && sets.s[j-1].Len() > sets.s[j].Len(); j-- {
+			sets.s[j], sets.s[j-1] = sets.s[j-1], sets.s[j]
+		}
+	}
+}
+
 type FixedSet struct {
 	sync.RWMutex
 	ids *intset.Sized32
