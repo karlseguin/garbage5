@@ -76,7 +76,6 @@ func (q *Query) Execute() Result {
 
 	q.sort.RLock()
 	defer q.sort.RUnlock()
-	//TODO: optimize for when sets[0].Len() is much smaller than sort.Len()
 	if l == 1 {
 		return q.execute(q.oneSetFilter)
 	}
@@ -117,6 +116,8 @@ func (q *Query) multiSetsFilter(id uint32) bool {
 	return true
 }
 
+//TODO: optimize for when sets[0].Len() is much smaller than sort.Len()
+//TODO: if len(q.sets) == 0, we could skip directly to the offset....
 func (q *Query) execute(filter func(id uint32) bool) Result {
 	result := q.db.results.Checkout()
 	q.sort.Each(q.desc, func(id uint32) bool {

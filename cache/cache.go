@@ -1,15 +1,20 @@
 package cache
 
+import (
+	"sync/atomic"
+)
+
 const (
 	BUCKETS     = 16
 	BUCKET_MASK = BUCKETS - 1
 )
 
 type Entry struct {
-	id   uint32
-	data []byte
-	prev *Entry
-	next *Entry
+	id       uint32
+	promoted uint32
+	data     []byte
+	prev     *Entry
+	next     *Entry
 }
 
 type Cache struct {
@@ -42,7 +47,10 @@ func (c *Cache) Get(id uint32) []byte {
 	if entry == nil {
 		return nil
 	}
-	c.promotables <- entry
+	if atomic.AddUint32(&entry.promoted, 1) == 5 {
+		c.promotables <- entry
+	}
+
 	return entry.data
 }
 
@@ -81,6 +89,8 @@ func (c *Cache) worker() {
 				if c.size > c.maxSize {
 					c.gc()
 				}
+			} else {
+				atomic.StoreUint32(&entry.promoted, 0)
 			}
 			c.list.PushToFront(entry)
 		case entry := <-c.deletables:

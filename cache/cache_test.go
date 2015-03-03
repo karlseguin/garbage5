@@ -61,6 +61,11 @@ func (_ CacheTests) GetPromotesAValue() {
 	for i := 0; i < 1500; i++ {
 		cache.Set(uint32(i), []byte(strconv.Itoa(i)))
 	}
+	// trigger the protomotion
+	cache.Get(1)
+	cache.Get(1)
+	cache.Get(1)
+	cache.Get(1)
 	cache.Get(1)
 	time.Sleep(time.Millisecond * 10)
 	cache.gc()

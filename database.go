@@ -164,9 +164,6 @@ func (db *Database) PutResource(resource Resource) error {
 // We can't use a pool. We could over-allocate outside of the transaction
 // (which would be nice), but we'd probably want to trim it since it's long-lived
 // and we don't want to waste the space.
-//
-// Furthermore, allocations around internal ids is starting to bug me. Those
-// can be pooled.
 func (db *Database) getResource(id uint32) []byte {
 	resource := db.cache.Get(id)
 	if resource != nil {
