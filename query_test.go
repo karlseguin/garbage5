@@ -30,6 +30,7 @@ func Test_Query(t *testing.T) {
 
 func (qt QueryTests) EmptyForInvalidSort() {
 	result := qt.db.Query("invalid").Execute()
+	Expect(result.HasMore()).To.Equal(false)
 	Expect(result.Len()).To.Equal(0)
 }
 
@@ -78,6 +79,12 @@ func (qt QueryTests) FiveSets() {
 	result := qt.db.Query("recent").And("set-1").And("set-2").And("set-3").And("set-4").And("set-5").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "6r", "7r")
+}
+
+func (qt QueryTests) Empty() {
+	result := qt.db.Query("recent").And("set-0").Execute()
+	Expect(result.HasMore()).To.Equal(false)
+	Expect(result.Len()).To.Equal(0)
 }
 
 func (qt QueryTests) assertResult(result Result, expected ...string) {

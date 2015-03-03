@@ -46,10 +46,9 @@ func (q *Query) Limit(limit uint32) *Query {
 
 //apply the set to the result
 func (q *Query) And(set string) *Query {
-	if s := q.db.GetSet(set); s != nil {
-		q.sets[q.setIndex] = s
-		q.setIndex++
-	}
+	s := q.db.GetSet(set)
+	q.sets[q.setIndex] = s
+	q.setIndex++
 	return q
 }
 
@@ -68,8 +67,10 @@ func (q *Query) Execute() Result {
 			q.sets[j], q.sets[j-1] = q.sets[j-1], q.sets[j]
 		}
 	}
+	if q.sets[0].Len() == 0 {
+		return EmptyResult
+	}
 
-	//TOOD: if sets[0].Len() == 0, short circuit
 	//TODO: optimize for when sets[0].Len() is much smaller than sort.Len()
 	if l == 1 {
 		return q.execute(q.oneSetFilter)

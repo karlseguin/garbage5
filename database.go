@@ -107,9 +107,13 @@ func (db *Database) GetList(name string) List {
 // and unlocking the set (Lock/RLock/Unlock/RUnlock). Changes to the set will
 // not be persisted.
 func (db *Database) GetSet(name string) Set {
-	defer db.setLock.RUnlock()
 	db.setLock.RLock()
-	return db.sets[name]
+	s, exists := db.sets[name]
+	db.setLock.RUnlock()
+	if exists == false {
+		return EmptySet
+	}
+	return s
 }
 
 // Creates, or overwirtes, an in-memory and on-disk list

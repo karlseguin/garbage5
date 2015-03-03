@@ -5,6 +5,10 @@ import (
 	"sync"
 )
 
+var (
+	EmptySet = new(emptySet)
+)
+
 type Set interface {
 	Lock()
 	RLock()
@@ -36,4 +40,31 @@ func (s *FixedSet) Len() int {
 
 func (s *FixedSet) Exists(value uint32) bool {
 	return s.ids.Exists(value)
+}
+
+type emptySet struct {
+}
+
+func (s *emptySet) Lock() {
+
+}
+
+func (s *emptySet) RLock() {
+
+}
+
+func (s *emptySet) Unlock() {
+
+}
+
+func (s *emptySet) RUnlock() {
+
+}
+
+func (s *emptySet) Len() int {
+	return 0
+}
+
+func (s *emptySet) Exists(value uint32) bool {
+	return false
 }
