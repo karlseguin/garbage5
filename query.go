@@ -63,7 +63,12 @@ func (q *Query) Execute() Result {
 		return q.execute(func(id uint32) bool { return true })
 	}
 
-	//TODO: sort sets (unless l == 1)
+	for i := 1; i < l; i++ {
+		for j := i; j > 0 && q.sets[j-1].Len() > q.sets[j].Len(); j-- {
+			q.sets[j], q.sets[j-1] = q.sets[j-1], q.sets[j]
+		}
+	}
+
 	//TOOD: if sets[0].Len() == 0, short circuit
 	//TODO: optimize for when sets[0].Len() is much smaller than sort.Len()
 	if l == 1 {
