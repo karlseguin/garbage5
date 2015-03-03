@@ -52,6 +52,7 @@ func (q *Query) And(set string) *Query {
 
 // Executethe query
 func (q *Query) Execute() Result {
+	defer q.Release()
 	if q.sort == nil || q.limit == 0 {
 		return EmptyResult
 	}
@@ -138,4 +139,5 @@ func (q *Query) Release() {
 	q.offset = 0
 	q.limit = 50
 	q.sets.l = 0
+	q.db.queries.list <- q
 }
