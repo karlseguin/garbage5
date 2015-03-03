@@ -67,6 +67,8 @@ func (q *Query) Execute() Result {
 		return EmptyResult
 	}
 
+	q.sort.RLock()
+	defer q.sort.RUnlock()
 	//TODO: optimize for when sets[0].Len() is much smaller than sort.Len()
 	if l == 1 {
 		return q.execute(q.oneSetFilter)
