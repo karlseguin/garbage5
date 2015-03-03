@@ -10,7 +10,7 @@ type List interface {
 	Unlock()
 	RUnlock()
 	Len() int
-	Each(func(id uint32) bool)
+	Each(bool, func(id uint32) bool)
 }
 
 type FixedList struct {
@@ -28,13 +28,21 @@ func (l *FixedList) Len() int {
 	return len(l.ids)
 }
 
-func (l *FixedList) Each(fn func(id uint32) bool) {
+func (l *FixedList) Each(desc bool, fn func(id uint32) bool) {
 	defer l.RUnlock()
 	l.RLock()
-	ll := len(l.ids)
-	for i := 0; i < ll; i++ {
-		if fn(l.ids[i]) == false {
-			return
+	ll := len(l.ids) - 1
+	if desc {
+		for i := ll; i != -1; i-- {
+			if fn(l.ids[i]) == false {
+				return
+			}
+		}
+	} else {
+		for i := 0; i != ll; i++ {
+			if fn(l.ids[i]) == false {
+				return
+			}
 		}
 	}
 }

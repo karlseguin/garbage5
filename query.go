@@ -28,6 +28,7 @@ type Query struct {
 	limit  int
 	offset int
 	sort   List
+	desc   bool
 	sets   *Sets
 	db     *Database
 }
@@ -44,13 +45,18 @@ func (q *Query) Limit(limit uint32) *Query {
 	return q
 }
 
+func (q *Query) Desc() *Query {
+	q.desc = true
+	return q
+}
+
 //apply the set to the result
 func (q *Query) And(set string) *Query {
 	q.sets.Add(q.db.GetSet(set))
 	return q
 }
 
-// Executethe query
+// Executes the query. After execution, the query object should not be used
 func (q *Query) Execute() Result {
 	defer q.Release()
 	if q.sort == nil || q.limit == 0 {
@@ -113,7 +119,7 @@ func (q *Query) multiSetsFilter(id uint32) bool {
 
 func (q *Query) execute(filter func(id uint32) bool) Result {
 	result := q.db.results.Checkout()
-	q.sort.Each(func(id uint32) bool {
+	q.sort.Each(q.desc, func(id uint32) bool {
 		if q.limit == 0 {
 			result.more = true
 			return false
@@ -139,5 +145,6 @@ func (q *Query) Release() {
 	q.offset = 0
 	q.limit = 50
 	q.sets.l = 0
+	q.desc = false
 	q.db.queries.list <- q
 }

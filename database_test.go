@@ -35,7 +35,7 @@ func assertList(db *Database, name string, expected ...string) {
 	Expect(list.Len()).To.Equal(len(expected))
 	i := 0
 
-	list.Each(func(id uint32) bool {
+	list.Each(false, func(id uint32) bool {
 		internal, _ := db.ids.Internal(expected[i])
 		Expect(id).To.Equal(internal)
 		i++

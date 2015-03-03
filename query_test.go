@@ -52,6 +52,12 @@ func (qt QueryTests) HasNoMore() {
 	Expect(result.HasMore()).To.Equal(false)
 }
 
+func (qt QueryTests) DescendingResults() {
+	result := qt.db.Query("recent").Desc().Offset(2).Limit(2).Execute()
+	Expect(result.HasMore()).To.Equal(true)
+	qt.assertResult(result, "13r", "12r")
+}
+
 func (qt QueryTests) OneSet() {
 	result := qt.db.Query("recent").And("set-1").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
