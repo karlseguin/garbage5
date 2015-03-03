@@ -33,6 +33,10 @@ func (m *IdMap) load(external string, internal uint32) {
 }
 
 func (m *IdMap) Internal(external string) (uint32, []byte) {
+	return m.InternalWrite(external, m.writer)
+}
+
+func (m *IdMap) InternalWrite(external string, writer func(k, v []byte)) (uint32, []byte) {
 	m.RLock()
 	internal, exists := m.etoi[external]
 	if exists {
@@ -44,17 +48,21 @@ func (m *IdMap) Internal(external string) (uint32, []byte) {
 
 	m.Lock()
 	internal, exists = m.etoi[external]
+	var bytes []byte
 	if exists == false {
 		m.counter++
 		internal = m.counter
 		m.etoi[external] = internal
 		m.itoe[internal] = external
-		m.itob[internal] = encodeId(internal)
+		bytes = encodeId(internal)
+		m.itob[internal] = bytes
+	} else {
+		bytes = m.itob[internal]
 	}
-	bytes := m.itob[internal]
+
 	m.Unlock()
 	if exists == false {
-		m.writer([]byte(external), bytes)
+		writer([]byte(external), bytes)
 	}
 	return internal, bytes
 }

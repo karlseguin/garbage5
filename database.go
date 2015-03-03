@@ -202,14 +202,16 @@ func (db *Database) writeIds(bucket []byte, name string, ids []string) ([]uint32
 	defer buffer.Release()
 	buffer.WriteUint32(uint32(l))
 
-	for i := 0; i < l; i++ {
-		id := ids[i]
-		internal, bytes := db.ids.Internal(id)
-		internals[i] = internal
-		buffer.Write(bytes)
-	}
-
 	return internals, db.storage.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket(IDS_BUCKET)
+		for i := 0; i < l; i++ {
+			id := ids[i]
+			internal, bytes := db.ids.InternalWrite(id, func(k, v []byte) {
+				b.Put(k, v)
+			})
+			internals[i] = internal
+			buffer.Write(bytes)
+		}
 		return tx.Bucket(bucket).Put([]byte(name), buffer.Bytes())
 	})
 }
