@@ -16,6 +16,11 @@ func Test_Query(t *testing.T) {
 	// so that we can cheaply create them without any I/O
 	db := createDB()
 	db.CreateList("recent", "0r", "1r", "2r", "3r", "4r", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
+	db.CreateSet("set-1", "2r", "3r", "4r", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
+	db.CreateSet("set-2", "3r", "4r", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
+	db.CreateSet("set-3", "4r", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
+	db.CreateSet("set-4", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
+	db.CreateSet("set-5", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
 	for i := 1; i < 30; i++ {
 		id := strconv.Itoa(i) + "r"
 		db.PutResource(FakeResource{id, id})
@@ -43,6 +48,36 @@ func (qt QueryTests) AppliesAnOffset() {
 func (qt QueryTests) HasNoMore() {
 	result := qt.db.Query("recent").Limit(20).Execute()
 	Expect(result.HasMore()).To.Equal(false)
+}
+
+func (qt QueryTests) OneSet() {
+	result := qt.db.Query("recent").And("set-1").Limit(2).Execute()
+	Expect(result.HasMore()).To.Equal(true)
+	qt.assertResult(result, "2r", "3r")
+}
+
+func (qt QueryTests) TwoSets() {
+	result := qt.db.Query("recent").And("set-1").And("set-2").Limit(2).Execute()
+	Expect(result.HasMore()).To.Equal(true)
+	qt.assertResult(result, "3r", "4r")
+}
+
+func (qt QueryTests) ThreeSets() {
+	result := qt.db.Query("recent").And("set-1").And("set-2").And("set-3").Limit(2).Execute()
+	Expect(result.HasMore()).To.Equal(true)
+	qt.assertResult(result, "4r", "5r")
+}
+
+func (qt QueryTests) FourSets() {
+	result := qt.db.Query("recent").And("set-1").And("set-2").And("set-3").And("set-4").Limit(2).Execute()
+	Expect(result.HasMore()).To.Equal(true)
+	qt.assertResult(result, "5r", "6r")
+}
+
+func (qt QueryTests) FiveSets() {
+	result := qt.db.Query("recent").And("set-1").And("set-2").And("set-3").And("set-4").And("set-5").Limit(2).Execute()
+	Expect(result.HasMore()).To.Equal(true)
+	qt.assertResult(result, "6r", "7r")
 }
 
 func (qt QueryTests) assertResult(result Result, expected ...string) {

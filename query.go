@@ -58,6 +58,55 @@ func (q *Query) Execute() Result {
 	if q.sort == nil {
 		return EmptyResult
 	}
+	l := q.setIndex
+	if l == 0 {
+		return q.execute(func(id uint32) bool { return true })
+	}
+
+	//TODO: sort sets (unless l == 1)
+	//TOOD: if sets[0].Len() == 0, short circuit
+	//TODO: optimize for when sets[0].Len() is much smaller than sort.Len()
+	if l == 1 {
+		return q.execute(q.oneSetFilter)
+	}
+	if l == 2 {
+		return q.execute(q.twoSetsFilter)
+	}
+	if l == 3 {
+		return q.execute(q.threeSetsFilter)
+	}
+	if l == 4 {
+		return q.execute(q.fourSetsFilter)
+	}
+	return q.execute(q.multiSetsFilter)
+}
+
+func (q *Query) oneSetFilter(id uint32) bool {
+	return q.sets[0].Exists(id)
+}
+
+func (q *Query) twoSetsFilter(id uint32) bool {
+	return q.sets[0].Exists(id) && q.sets[1].Exists(id)
+}
+
+func (q *Query) threeSetsFilter(id uint32) bool {
+	return q.sets[0].Exists(id) && q.sets[1].Exists(id) && q.sets[2].Exists(id)
+}
+
+func (q *Query) fourSetsFilter(id uint32) bool {
+	return q.sets[0].Exists(id) && q.sets[1].Exists(id) && q.sets[2].Exists(id) && q.sets[3].Exists(id)
+}
+
+func (q *Query) multiSetsFilter(id uint32) bool {
+	for i := 0; i < q.setIndex; i++ {
+		if q.sets[i].Exists(id) == false {
+			return false
+		}
+	}
+	return true
+}
+
+func (q *Query) execute(filter func(id uint32) bool) Result {
 	result := q.db.results.Checkout()
 	q.sort.Each(func(id uint32) bool {
 		if q.limit == 0 {
@@ -69,8 +118,10 @@ func (q *Query) Execute() Result {
 			return true
 		}
 		if q.offset == 0 {
-			result.Add(id, resource)
-			q.limit--
+			if filter(id) {
+				result.Add(id, resource)
+				q.limit--
+			}
 		} else {
 			q.offset--
 		}
