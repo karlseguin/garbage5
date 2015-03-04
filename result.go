@@ -48,7 +48,7 @@ func (r Ranks) Len() int {
 }
 
 func (r Ranks) Less(i, j int) bool {
-	return r[i].rank < r[i].rank
+	return r[i].rank < r[j].rank
 }
 
 func (r Ranks) Swap(i, j int) {

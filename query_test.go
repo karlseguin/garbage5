@@ -16,6 +16,11 @@ func Test_Query(t *testing.T) {
 	// so that we can cheaply create them without any I/O
 	db := createDB()
 	db.CreateList("recent", "0r", "1r", "2r", "3r", "4r", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
+	all := make([]string, 1005)
+	for i := 0; i < 1005; i++ {
+		all[i] = strconv.Itoa(i) + "r"
+	}
+	db.CreateList("all", all...)
 	db.CreateSet("set-1", "2r", "3r", "4r", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
 	db.CreateSet("set-2", "3r", "4r", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
 	db.CreateSet("set-3", "4r", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
@@ -86,6 +91,42 @@ func (qt QueryTests) FiveSets() {
 	result := qt.db.Query("recent").And("set-1").And("set-2").And("set-3").And("set-4").And("set-5").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "6r", "7r")
+}
+
+func (qt QueryTests) OneSetBasedFind() {
+	result := qt.db.Query("all").And("set-1").Limit(2).Execute()
+	Expect(result.HasMore()).To.Equal(true)
+	qt.assertResult(result, "2r", "3r")
+}
+
+func (qt QueryTests) TwoSetBasedFind() {
+	result := qt.db.Query("all").And("set-1").And("set-2").Limit(2).Execute()
+	Expect(result.HasMore()).To.Equal(true)
+	qt.assertResult(result, "3r", "4r")
+}
+
+func (qt QueryTests) SetBasedNoMore() {
+	result := qt.db.Query("all").And("set-1").And("set-2").Limit(2).Offset(11).Execute()
+	Expect(result.HasMore()).To.Equal(false)
+	qt.assertResult(result, "14r", "15r")
+}
+
+func (qt QueryTests) SetBasedDesc() {
+	result := qt.db.Query("all").And("set-1").And("set-2").Limit(2).Offset(1).Desc().Execute()
+	Expect(result.HasMore()).To.Equal(true)
+	qt.assertResult(result, "14r", "13r")
+}
+
+func (qt QueryTests) SetBasedDescNoMore() {
+	result := qt.db.Query("all").And("set-1").And("set-2").Limit(2).Offset(11).Desc().Execute()
+	Expect(result.HasMore()).To.Equal(false)
+	qt.assertResult(result, "4r", "3r")
+}
+
+func (qt QueryTests) SetBasedOutOfRangeOffset() {
+	result := qt.db.Query("all").And("set-1").And("set-2").Limit(2).Desc().Offset(14).Execute()
+	Expect(result.HasMore()).To.Equal(false)
+	Expect(result.Len()).To.Equal(0)
 }
 
 func (qt QueryTests) Empty() {

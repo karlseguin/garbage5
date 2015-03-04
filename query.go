@@ -186,7 +186,7 @@ func (q *Query) setExecute(filter Filter) Result {
 	result.length = 0
 
 	if q.desc {
-		for i := len(ranks) - q.offset - 1; i != -1; i-- {
+		for i := len(ranks) - q.offset - 1; i > -1; i-- {
 			if q.setExecuteAdd(result, ranks[i].id) == false {
 				break
 			}
@@ -203,9 +203,12 @@ func (q *Query) setExecute(filter Filter) Result {
 
 func (q *Query) setExecuteAdd(result *NormalResult, id uint32) bool {
 	if resource := q.db.getResource(id); resource != nil {
+		if q.limit == 0 {
+			result.more = true
+			return false
+		}
 		result.Add(id, resource)
 		q.limit--
-		return q.limit != 0
 	}
 	return true
 }
