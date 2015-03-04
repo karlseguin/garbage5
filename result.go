@@ -9,7 +9,8 @@ type Result interface {
 }
 
 var (
-	EmptyResult = new(emptyResult)
+	EmptyResult      = new(emptyResult)
+	SmallSetTreshold = 100
 )
 
 type ResultPool struct {
@@ -25,6 +26,7 @@ func NewResultPool(max, count int) *ResultPool {
 			pool:      pool,
 			ids:       make([]uint32, max),
 			resources: make([][]byte, max),
+			ranked:    make(Ranks, SmallSetTreshold),
 		}
 	}
 	return pool
@@ -34,9 +36,29 @@ func (p *ResultPool) Checkout() *NormalResult {
 	return <-p.list
 }
 
+type Ranked struct {
+	id   uint32
+	rank uint32
+}
+
+type Ranks []Ranked
+
+func (r Ranks) Len() int {
+	return len(r)
+}
+
+func (r Ranks) Less(i, j int) bool {
+	return r[i].rank < r[i].rank
+}
+
+func (r Ranks) Swap(i, j int) {
+	r[i], r[j] = r[j], r[i]
+}
+
 type NormalResult struct {
 	length    int
 	more      bool
+	ranked    Ranks
 	ids       []uint32
 	resources [][]byte
 	pool      *ResultPool
@@ -45,6 +67,11 @@ type NormalResult struct {
 func (r *NormalResult) Add(id uint32, resource []byte) {
 	r.ids[r.length] = id
 	r.resources[r.length] = resource
+	r.length += 1
+}
+
+func (r *NormalResult) AddRanked(id uint32, rank uint32) {
+	r.ranked[r.length] = Ranked{id, rank}
 	r.length += 1
 }
 

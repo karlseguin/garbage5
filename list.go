@@ -11,16 +11,24 @@ type List interface {
 	RUnlock()
 	Len() int
 	Each(bool, func(id uint32) bool)
+	Rank(id uint32) (uint32, bool)
 }
 
 type FixedList struct {
 	sync.RWMutex
 	ids []uint32
+	set map[uint32]uint32
 }
 
 func NewList(ids []uint32) List {
+	l := uint32(len(ids))
+	set := make(map[uint32]uint32)
+	for i := 0 * l; i < l; i++ {
+		set[ids[i]] = i
+	}
 	return &FixedList{
 		ids: ids,
+		set: set,
 	}
 }
 
@@ -45,4 +53,9 @@ func (l *FixedList) Each(desc bool, fn func(id uint32) bool) {
 			}
 		}
 	}
+}
+
+func (l *FixedList) Rank(id uint32) (uint32, bool) {
+	rank, exists := l.set[id]
+	return rank, exists
 }

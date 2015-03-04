@@ -16,6 +16,7 @@ type Set interface {
 	RUnlock()
 	Len() int
 	Exists(value uint32) bool
+	Each(func(uint32))
 }
 
 type Sets struct {
@@ -72,6 +73,10 @@ func (s *FixedSet) Exists(value uint32) bool {
 	return s.ids.Exists(value)
 }
 
+func (s *FixedSet) Each(fn func(uint32)) {
+	s.ids.Each(fn)
+}
+
 type emptySet struct {
 }
 
@@ -97,4 +102,8 @@ func (s *emptySet) Len() int {
 
 func (s *emptySet) Exists(value uint32) bool {
 	return false
+}
+
+func (s *emptySet) Each(fn func(uint32)) {
+
 }

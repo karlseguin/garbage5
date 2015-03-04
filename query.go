@@ -1,8 +1,14 @@
 package garbage5
 
+import (
+	"sort"
+)
+
 type QueryPool struct {
 	list chan *Query
 }
+
+type Filter func(id uint32) bool
 
 func NewQueryPool(db *Database, maxSets int) *QueryPool {
 	pool := &QueryPool{
@@ -64,59 +70,82 @@ func (q *Query) Execute() Result {
 	}
 	l := q.sets.l
 	if l == 0 {
-		return q.execute(func(id uint32) bool { return true })
+		return q.execute(noFilter)
 	}
 
 	q.sets.RLock()
 	defer q.sets.RUnlock()
 	q.sets.Sort()
-	if q.sets.s[0].Len() == 0 {
+
+	sl := q.sets.s[0].Len()
+	if sl == 0 {
 		return EmptyResult
 	}
 
 	q.sort.RLock()
 	defer q.sort.RUnlock()
-	if l == 1 {
-		return q.execute(q.oneSetFilter)
+	if sl < SmallSetTreshold && q.sort.Len() > 1000 {
+		return q.setExecute(q.getFilter(l, 1))
 	}
-	if l == 2 {
-		return q.execute(q.twoSetsFilter)
-	}
-	if l == 3 {
-		return q.execute(q.threeSetsFilter)
-	}
-	if l == 4 {
-		return q.execute(q.fourSetsFilter)
-	}
-	return q.execute(q.multiSetsFilter)
+	return q.execute(q.getFilter(l, 0))
 }
 
-func (q *Query) oneSetFilter(id uint32) bool {
-	return q.sets.s[0].Exists(id)
-}
-
-func (q *Query) twoSetsFilter(id uint32) bool {
-	return q.sets.s[0].Exists(id) && q.sets.s[1].Exists(id)
-}
-
-func (q *Query) threeSetsFilter(id uint32) bool {
-	return q.sets.s[0].Exists(id) && q.sets.s[1].Exists(id) && q.sets.s[2].Exists(id)
-}
-
-func (q *Query) fourSetsFilter(id uint32) bool {
-	return q.sets.s[0].Exists(id) && q.sets.s[1].Exists(id) && q.sets.s[2].Exists(id) && q.sets.s[3].Exists(id)
-}
-
-func (q *Query) multiSetsFilter(id uint32) bool {
-	for i := 0; i < q.sets.l; i++ {
-		if q.sets.s[i].Exists(id) == false {
-			return false
-		}
+func (q *Query) getFilter(count int, start int) Filter {
+	switch count - start {
+	case 0:
+		return noFilter
+	case 1:
+		return q.oneSetFilter(start)
+	case 2:
+		return q.twoSetsFilter(start)
+	case 3:
+		return q.threeSetsFilter(start)
+	case 4:
+		return q.fourSetsFilter(start)
+	default:
+		return q.multiSetsFilter(start)
 	}
+}
+
+func noFilter(id uint32) bool {
 	return true
 }
 
-//TODO: optimize for when sets[0].Len() is much smaller than sort.Len()
+func (q *Query) oneSetFilter(start int) Filter {
+	return func(id uint32) bool {
+		return q.sets.s[start].Exists(id)
+	}
+}
+
+func (q *Query) twoSetsFilter(start int) Filter {
+	return func(id uint32) bool {
+		return q.sets.s[start].Exists(id) && q.sets.s[start+1].Exists(id)
+	}
+}
+
+func (q *Query) threeSetsFilter(start int) Filter {
+	return func(id uint32) bool {
+		return q.sets.s[start].Exists(id) && q.sets.s[start+1].Exists(id) && q.sets.s[start+2].Exists(id)
+	}
+}
+
+func (q *Query) fourSetsFilter(start int) Filter {
+	return func(id uint32) bool {
+		return q.sets.s[start].Exists(id) && q.sets.s[start+1].Exists(id) && q.sets.s[start+2].Exists(id) && q.sets.s[start+3].Exists(id)
+	}
+}
+
+func (q *Query) multiSetsFilter(start int) Filter {
+	return func(id uint32) bool {
+		for i := start; i < q.sets.l; i++ {
+			if q.sets.s[i].Exists(id) == false {
+				return false
+			}
+		}
+		return true
+	}
+}
+
 //TODO: if len(q.sets) == 0, we could skip directly to the offset....
 func (q *Query) execute(filter func(id uint32) bool) Result {
 	result := q.db.results.Checkout()
@@ -139,6 +168,46 @@ func (q *Query) execute(filter func(id uint32) bool) Result {
 		}
 		return true
 	})
+	return result
+}
+
+func (q *Query) setExecute(filter Filter) Result {
+	set := q.sets.s[0]
+	result := q.db.results.Checkout()
+	set.Each(func(id uint32) {
+		if filter(id) {
+			if rank, ok := q.sort.Rank(id); ok {
+				result.AddRanked(id, rank)
+			}
+		}
+	})
+	ranks := result.ranked[:result.length]
+	sort.Sort(ranks)
+	result.length = 0
+
+	if q.desc {
+		for i := len(ranks) - q.offset - 1; i != -1; i-- {
+			id := ranks[i].id
+			if resource := q.db.getResource(id); resource != nil {
+				result.Add(id, resource)
+				q.limit--
+				if q.limit == 0 {
+					break
+				}
+			}
+		}
+	} else {
+		for i, l := q.offset, len(ranks); i < l; i++ {
+			id := ranks[i].id
+			if resource := q.db.getResource(id); resource != nil {
+				result.Add(id, resource)
+				q.limit--
+				if q.limit == 0 {
+					break
+				}
+			}
+		}
+	}
 	return result
 }
 
