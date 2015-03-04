@@ -187,28 +187,27 @@ func (q *Query) setExecute(filter Filter) Result {
 
 	if q.desc {
 		for i := len(ranks) - q.offset - 1; i != -1; i-- {
-			id := ranks[i].id
-			if resource := q.db.getResource(id); resource != nil {
-				result.Add(id, resource)
-				q.limit--
-				if q.limit == 0 {
-					break
-				}
+			if q.setExecuteAdd(result, ranks[i].id) == false {
+				break
 			}
 		}
 	} else {
 		for i, l := q.offset, len(ranks); i < l; i++ {
-			id := ranks[i].id
-			if resource := q.db.getResource(id); resource != nil {
-				result.Add(id, resource)
-				q.limit--
-				if q.limit == 0 {
-					break
-				}
+			if q.setExecuteAdd(result, ranks[i].id) == false {
+				break
 			}
 		}
 	}
 	return result
+}
+
+func (q *Query) setExecuteAdd(result *NormalResult, id uint32) bool {
+	if resource := q.db.getResource(id); resource != nil {
+		result.Add(id, resource)
+		q.limit--
+		return q.limit != 0
+	}
+	return true
 }
 
 func (q *Query) Release() {
