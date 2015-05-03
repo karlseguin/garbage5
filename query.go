@@ -183,6 +183,8 @@ func (q *Query) setExecute(filter Filter) Result {
 	})
 	ranks := result.ranked[:result.length]
 	sort.Sort(ranks)
+	//result.length is shared with unsorted and sorted results
+	//which is safe since one is always calculated after the other
 	result.length = 0
 
 	if q.desc {
