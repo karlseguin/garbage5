@@ -3,7 +3,6 @@ package garbage5
 import (
 	. "github.com/karlseguin/expect"
 	"testing"
-	"time"
 )
 
 type ResultTests struct{}
@@ -12,23 +11,10 @@ func Test_Result(t *testing.T) {
 	Expectify(new(ResultTests), t)
 }
 
-func (_ ResultTests) PoolBlocksWhenDrained() {
-	pool := NewResultPool(0, 2)
-	a := pool.Checkout()
-	pool.Checkout()
-	checked := false
-	go func() {
-		pool.Checkout()
-		checked = true
-	}()
-	time.Sleep(time.Millisecond * 50)
-	Expect(checked).To.Equal(false)
-	a.Release()
-	Expect(pool.Checkout()).Not.To.Equal(nil)
-}
-
 func (_ ResultTests) AddIds() {
-	result := NewResultPool(10, 1).Checkout()
+	db := createDB()
+	result := db.Query("aa").result
+
 	result.Add(43, nil)
 	result.Add(94, nil)
 	result.Add(234, nil)

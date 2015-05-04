@@ -4,28 +4,37 @@ import (
 	"sort"
 )
 
-type QueryPool struct {
-	list chan *Query
-}
+var (
+	QueryPoolSize    = 64
+	SmallSetTreshold = 100
+)
+
+type QueryPool chan *Query
 
 type Filter func(id uint32) bool
 
-func NewQueryPool(db *Database, maxSets int) *QueryPool {
-	pool := &QueryPool{
-		list: make(chan *Query, 64),
-	}
-	for i := 0; i < 64; i++ {
-		pool.list <- &Query{
-			db:    db,
-			limit: 50,
-			sets:  &Sets{s: make([]Set, maxSets)},
+func NewQueryPool(db *Database, maxSets int, maxResults int) QueryPool {
+	pool := make(QueryPool, QueryPoolSize)
+	for i := 0; i < QueryPoolSize; i++ {
+		result := &NormalResult{
+			ids:       make([]uint32, maxResults),
+			resources: make([][]byte, maxResults),
+			ranked:    make(Ranks, SmallSetTreshold),
 		}
+		query := &Query{
+			db:     db,
+			limit:  50,
+			result: result,
+			sets:   &Sets{s: make([]Set, maxSets)},
+		}
+		result.query = query
+		pool <- query
 	}
 	return pool
 }
 
-func (p *QueryPool) Checkout(sort List) *Query {
-	q := <-p.list
+func (p QueryPool) Checkout(sort List) *Query {
+	q := <-p
 	q.sort = sort
 	return q
 }
@@ -37,6 +46,7 @@ type Query struct {
 	desc   bool
 	sets   *Sets
 	db     *Database
+	result *NormalResult
 }
 
 // Specify the offset to start fetching results at
@@ -62,10 +72,11 @@ func (q *Query) And(set string) *Query {
 	return q
 }
 
-// Executes the query. After execution, the query object should not be used
+// Executes the query. After execution, the query object should not be used until
+// Release() is called on the returned result
 func (q *Query) Execute() Result {
-	defer q.Release()
 	if q.sort == nil || q.limit == 0 {
+		q.result.Release()
 		return EmptyResult
 	}
 	l := q.sets.l
@@ -79,6 +90,7 @@ func (q *Query) Execute() Result {
 
 	sl := q.sets.s[0].Len()
 	if sl == 0 {
+		q.result.Release()
 		return EmptyResult
 	}
 
@@ -148,10 +160,9 @@ func (q *Query) multiSetsFilter(start int) Filter {
 
 //TODO: if len(q.sets) == 0, we could skip directly to the offset....
 func (q *Query) execute(filter func(id uint32) bool) Result {
-	result := q.db.results.Checkout()
 	q.sort.Each(q.desc, func(id uint32) bool {
 		if q.limit == 0 {
-			result.more = true
+			q.result.more = true
 			return false
 		}
 		resource := q.db.getResource(id)
@@ -160,7 +171,7 @@ func (q *Query) execute(filter func(id uint32) bool) Result {
 		}
 		if q.offset == 0 {
 			if filter(id) {
-				result.Add(id, resource)
+				q.result.Add(id, resource)
 				q.limit--
 			}
 		} else {
@@ -168,39 +179,38 @@ func (q *Query) execute(filter func(id uint32) bool) Result {
 		}
 		return true
 	})
-	return result
+	return q.result
 }
 
 func (q *Query) setExecute(filter Filter) Result {
 	set := q.sets.s[0]
-	result := q.db.results.Checkout()
 	set.Each(func(id uint32) {
 		if filter(id) {
 			if rank, ok := q.sort.Rank(id); ok {
-				result.AddRanked(id, rank)
+				q.result.AddRanked(id, rank)
 			}
 		}
 	})
-	ranks := result.ranked[:result.length]
+	ranks := q.result.ranked[:q.result.length]
 	sort.Sort(ranks)
 	//result.length is shared with unsorted and sorted results
 	//which is safe since one is always calculated after the other
-	result.length = 0
+	q.result.length = 0
 
 	if q.desc {
 		for i := len(ranks) - q.offset - 1; i > -1; i-- {
-			if q.setExecuteAdd(result, ranks[i].id) == false {
+			if q.setExecuteAdd(q.result, ranks[i].id) == false {
 				break
 			}
 		}
 	} else {
 		for i, l := q.offset, len(ranks); i < l; i++ {
-			if q.setExecuteAdd(result, ranks[i].id) == false {
+			if q.setExecuteAdd(q.result, ranks[i].id) == false {
 				break
 			}
 		}
 	}
-	return result
+	return q.result
 }
 
 func (q *Query) setExecuteAdd(result *NormalResult, id uint32) bool {
@@ -215,10 +225,11 @@ func (q *Query) setExecuteAdd(result *NormalResult, id uint32) bool {
 	return true
 }
 
-func (q *Query) Release() {
+// called when the result is released
+func (q *Query) release() {
 	q.offset = 0
 	q.limit = 50
 	q.sets.l = 0
 	q.desc = false
-	q.db.queries.list <- q
+	q.db.queries <- q
 }

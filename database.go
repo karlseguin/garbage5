@@ -31,8 +31,7 @@ type Database struct {
 	cache    *cache.Cache
 	sets     map[string]Set
 	lists    map[string]List
-	queries  *QueryPool
-	results  *ResultPool
+	queries  QueryPool
 }
 
 func New(c *Configuration) (*Database, error) {
@@ -45,9 +44,8 @@ func New(c *Configuration) (*Database, error) {
 		sets:    make(map[string]Set),
 		lists:   make(map[string]List),
 		cache:   cache.New(c.cacheSize),
-		results: NewResultPool(c.maxResults, 128),
 	}
-	database.queries = NewQueryPool(database, c.maxSets)
+	database.queries = NewQueryPool(database, c.maxSets, c.maxResults)
 	database.ids = NewIdMap(database.writeId)
 
 	if err := database.initialize(); err != nil {
