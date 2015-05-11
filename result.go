@@ -40,13 +40,13 @@ type NormalResult struct {
 	resources [][]byte
 }
 
-func (r *NormalResult) Add(id uint32, resource []byte) {
+func (r *NormalResult) add(id uint32, resource []byte) {
 	r.ids[r.length] = id
 	r.resources[r.length] = resource
 	r.length += 1
 }
 
-func (r *NormalResult) AddRanked(id uint32, rank uint32) {
+func (r *NormalResult) addranked(id uint32, rank uint32) {
 	r.ranked[r.length] = Ranked{id, rank}
 	r.length += 1
 }

@@ -161,18 +161,22 @@ func (q *Query) multiSetsFilter(start int) Filter {
 //TODO: if len(q.sets) == 0, we could skip directly to the offset....
 func (q *Query) execute(filter func(id uint32) bool) Result {
 	q.sort.Each(q.desc, func(id uint32) bool {
+		if filter(id) == false {
+			return true
+		}
 		resource := q.db.getResource(id)
 		if resource == nil {
 			return true
 		}
+
 		if q.offset > 0 {
 			q.offset--
-		} else if filter(id) {
+		} else {
 			if q.limit == 0 {
 				q.result.more = true
 				return false
 			}
-			q.result.Add(id, resource)
+			q.result.add(id, resource)
 			q.limit--
 		}
 		return true
@@ -183,10 +187,11 @@ func (q *Query) execute(filter func(id uint32) bool) Result {
 func (q *Query) setExecute(filter Filter) Result {
 	set := q.sets.s[0]
 	set.Each(func(id uint32) {
-		if filter(id) {
-			if rank, ok := q.sort.Rank(id); ok {
-				q.result.AddRanked(id, rank)
-			}
+		if filter(id) == false {
+			return
+		}
+		if rank, ok := q.sort.Rank(id); ok {
+			q.result.addranked(id, rank)
 		}
 	})
 	ranks := q.result.ranked[:q.result.length]
@@ -217,7 +222,7 @@ func (q *Query) setExecuteAdd(result *NormalResult, id uint32) bool {
 			result.more = true
 			return false
 		}
-		result.Add(id, resource)
+		result.add(id, resource)
 		q.limit--
 	}
 	return true

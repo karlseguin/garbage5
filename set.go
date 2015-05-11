@@ -41,11 +41,16 @@ func (sets *Sets) RUnlock() {
 	}
 }
 
+// insertion sort
 func (sets *Sets) Sort() {
 	for i := 1; i < sets.l; i++ {
-		for j := i; j > 0 && sets.s[j-1].Len() > sets.s[j].Len(); j-- {
-			sets.s[j], sets.s[j-1] = sets.s[j-1], sets.s[j]
+		j := i
+		t := sets.s[i]
+		l := t.Len()
+		for ; j > 0 && sets.s[j-1].Len() > l; j-- {
+			sets.s[j] = sets.s[j-1]
 		}
+		sets.s[j] = t
 	}
 }
 
