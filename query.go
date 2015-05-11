@@ -161,21 +161,19 @@ func (q *Query) multiSetsFilter(start int) Filter {
 //TODO: if len(q.sets) == 0, we could skip directly to the offset....
 func (q *Query) execute(filter func(id uint32) bool) Result {
 	q.sort.Each(q.desc, func(id uint32) bool {
-		if q.limit == 0 {
-			q.result.more = true
-			return false
-		}
 		resource := q.db.getResource(id)
 		if resource == nil {
 			return true
 		}
-		if q.offset == 0 {
-			if filter(id) {
-				q.result.Add(id, resource)
-				q.limit--
-			}
-		} else {
+		if q.offset > 0 {
 			q.offset--
+		} else if filter(id) {
+			if q.limit == 0 {
+				q.result.more = true
+				return false
+			}
+			q.result.Add(id, resource)
+			q.limit--
 		}
 		return true
 	})
