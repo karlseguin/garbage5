@@ -83,8 +83,8 @@ func (db *Database) initialize() (err error) {
 // and unlocking the list (Lock/RLock/Unlock/RUnlock). Changes to the list will
 // not be persisted.
 func (db *Database) GetList(name string) List {
-	// defer db.listLock.RUnlock()
-	// db.listLock.RLock()
+	defer db.listLock.RUnlock()
+	db.listLock.RLock()
 	return db.lists[name]
 }
 
@@ -92,9 +92,9 @@ func (db *Database) GetList(name string) List {
 // and unlocking the set (Lock/RLock/Unlock/RUnlock). Changes to the set will
 // not be persisted.
 func (db *Database) GetSet(name string) Set {
-	// db.setLock.RLock()
+	db.setLock.RLock()
 	s, exists := db.sets[name]
-	// db.setLock.RUnlock()
+	db.setLock.RUnlock()
 	if exists == false {
 		return EmptySet
 	}

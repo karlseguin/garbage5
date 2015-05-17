@@ -83,8 +83,8 @@ func (q *Query) Execute() Result {
 		return q.execute(noFilter)
 	}
 
-	// q.sets.RLock()
-	// defer q.sets.RUnlock()
+	q.sets.RLock()
+	defer q.sets.RUnlock()
 	q.sets.Sort()
 
 	sl := q.sets.s[0].Len()
@@ -93,8 +93,8 @@ func (q *Query) Execute() Result {
 		return EmptyResult
 	}
 
-	// q.sort.RLock()
-	// defer q.sort.RUnlock()
+	q.sort.RLock()
+	defer q.sort.RUnlock()
 	if sl < SmallSetTreshold && q.sort.Len() > 1000 {
 		return q.setExecute(q.getFilter(l, 1))
 	}
