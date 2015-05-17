@@ -17,9 +17,8 @@ func NewQueryPool(db *Database, maxSets int, maxResults int) QueryPool {
 	pool := make(QueryPool, QueryPoolSize)
 	for i := 0; i < QueryPoolSize; i++ {
 		result := &NormalResult{
-			ids:       make([]uint32, maxResults),
-			resources: make([][]byte, maxResults),
-			ranked:    make(Ranks, SmallSetTreshold),
+			ids:    make([]uint32, maxResults),
+			ranked: make(Ranks, SmallSetTreshold),
 		}
 		query := &Query{
 			db:     db,
@@ -84,8 +83,8 @@ func (q *Query) Execute() Result {
 		return q.execute(noFilter)
 	}
 
-	q.sets.RLock()
-	defer q.sets.RUnlock()
+	// q.sets.RLock()
+	// defer q.sets.RUnlock()
 	q.sets.Sort()
 
 	sl := q.sets.s[0].Len()
@@ -94,8 +93,8 @@ func (q *Query) Execute() Result {
 		return EmptyResult
 	}
 
-	q.sort.RLock()
-	defer q.sort.RUnlock()
+	// q.sort.RLock()
+	// defer q.sort.RUnlock()
 	if sl < SmallSetTreshold && q.sort.Len() > 1000 {
 		return q.setExecute(q.getFilter(l, 1))
 	}
@@ -164,11 +163,6 @@ func (q *Query) execute(filter func(id uint32) bool) Result {
 		if filter(id) == false {
 			return true
 		}
-		resource := q.db.getResource(id)
-		if resource == nil {
-			return true
-		}
-
 		if q.offset > 0 {
 			q.offset--
 		} else {
@@ -176,7 +170,7 @@ func (q *Query) execute(filter func(id uint32) bool) Result {
 				q.result.more = true
 				return false
 			}
-			q.result.add(id, resource)
+			q.result.add(id)
 			q.limit--
 		}
 		return true
@@ -217,14 +211,12 @@ func (q *Query) setExecute(filter Filter) Result {
 }
 
 func (q *Query) setExecuteAdd(result *NormalResult, id uint32) bool {
-	if resource := q.db.getResource(id); resource != nil {
-		if q.limit == 0 {
-			result.more = true
-			return false
-		}
-		result.add(id, resource)
-		q.limit--
+	if q.limit == 0 {
+		result.more = true
+		return false
 	}
+	result.add(id)
+	q.limit--
 	return true
 }
 

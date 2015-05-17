@@ -15,9 +15,9 @@ func (_ ResultTests) AddIds() {
 	db := createDB()
 	result := db.Query("aa").result
 
-	result.add(43, nil)
-	result.add(94, nil)
-	result.add(234, nil)
+	result.add(43)
+	result.add(94)
+	result.add(234)
 	Expect(result.Len()).To.Equal(3)
 	Expect(result.Ids()).To.Equal([]uint32{43, 94, 234})
 

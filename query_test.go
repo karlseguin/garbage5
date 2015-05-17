@@ -2,7 +2,6 @@ package garbage5
 
 import (
 	. "github.com/karlseguin/expect"
-	"strconv"
 	"testing"
 )
 
@@ -11,27 +10,7 @@ type QueryTests struct {
 }
 
 func Test_Query(t *testing.T) {
-	// all tests share the same DB instance since they only read from it.
-	// alternatively, make it possible to create a purely in-memory database
-	// so that we can cheaply create them without any I/O
-	db := createDB()
-	db.CreateList("recent", "0r", "1r", "2r", "3r", "4r", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
-	all := make([]string, 1005)
-	for i := 0; i < 1005; i++ {
-		all[i] = strconv.Itoa(i) + "r"
-	}
-	db.CreateList("all", all...)
-	db.CreateSet("set-1", "2r", "3r", "4r", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
-	db.CreateSet("set-2", "3r", "4r", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
-	db.CreateSet("set-3", "4r", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
-	db.CreateSet("set-4", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
-	db.CreateSet("set-5", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
-	db.CreateSet("set-6", "1r")
-	for i := 1; i < 30; i++ {
-		id := strconv.Itoa(i) + "r"
-		db.PutResource(FakeResource{id, id})
-	}
-	Expectify(&QueryTests{db}, t)
+	Expectify(&QueryTests{createDB()}, t)
 }
 
 func (qt QueryTests) EmptyForInvalidSort() {
@@ -64,79 +43,79 @@ func (qt QueryTests) DescendingResults() {
 }
 
 func (qt QueryTests) OneSet() {
-	result := qt.db.Query("recent").And("set-1").Limit(2).Execute()
+	result := qt.db.Query("recent").And("1").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "2r", "3r")
 }
 
 func (qt QueryTests) TwoSets() {
-	result := qt.db.Query("recent").And("set-1").And("set-2").Limit(2).Execute()
+	result := qt.db.Query("recent").And("1").And("2").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "3r", "4r")
 }
 
 func (qt QueryTests) ThreeSets() {
-	result := qt.db.Query("recent").And("set-1").And("set-2").And("set-3").Limit(2).Execute()
+	result := qt.db.Query("recent").And("1").And("2").And("3").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "4r", "5r")
 }
 
 func (qt QueryTests) FourSets() {
-	result := qt.db.Query("recent").And("set-1").And("set-2").And("set-3").And("set-4").Limit(2).Execute()
+	result := qt.db.Query("recent").And("1").And("2").And("3").And("4").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "5r", "6r")
 }
 
 func (qt QueryTests) FiveSets() {
-	result := qt.db.Query("recent").And("set-1").And("set-2").And("set-3").And("set-4").And("set-5").Limit(2).Execute()
+	result := qt.db.Query("recent").And("1").And("2").And("3").And("4").And("5").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "6r", "7r")
 }
 
 func (qt QueryTests) OneSetBasedFind() {
-	result := qt.db.Query("all").And("set-1").Limit(2).Execute()
+	result := qt.db.Query("large").And("1").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "2r", "3r")
 }
 
 func (qt QueryTests) TwoSetBasedFind() {
-	result := qt.db.Query("all").And("set-1").And("set-2").Limit(2).Execute()
+	result := qt.db.Query("large").And("1").And("2").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "3r", "4r")
 }
 
 func (qt QueryTests) SetBasedNoMore() {
-	result := qt.db.Query("all").And("set-1").And("set-2").Limit(2).Offset(11).Execute()
+	result := qt.db.Query("large").And("1").And("2").Limit(2).Offset(11).Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	qt.assertResult(result, "14r", "15r")
 }
 
 func (qt QueryTests) SetBasedDesc() {
-	result := qt.db.Query("all").And("set-1").And("set-2").Limit(2).Offset(1).Desc().Execute()
+	result := qt.db.Query("large").And("1").And("2").Limit(2).Offset(1).Desc().Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "14r", "13r")
 }
 
 func (qt QueryTests) SetBasedDescNoMore() {
-	result := qt.db.Query("all").And("set-1").And("set-2").Limit(2).Offset(11).Desc().Execute()
+	result := qt.db.Query("large").And("1").And("2").Limit(2).Offset(11).Desc().Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	qt.assertResult(result, "4r", "3r")
 }
 
 func (qt QueryTests) SetBasedOutOfRangeOffset() {
-	result := qt.db.Query("all").And("set-1").And("set-2").Limit(2).Desc().Offset(14).Execute()
+	result := qt.db.Query("large").And("1").And("2").Limit(2).Desc().Offset(14).Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	Expect(result.Len()).To.Equal(0)
 }
 
 func (qt QueryTests) Empty() {
-	result := qt.db.Query("recent").And("set-0").Execute()
+	result := qt.db.Query("recent").And("0").Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	Expect(result.Len()).To.Equal(0)
 }
 
 func (qt QueryTests) Small() {
-	result := qt.db.Query("recent").And("set-6").Execute()
+	result := qt.db.Query("recent").And("6").Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	qt.assertResult(result, "1r")
 }
@@ -151,6 +130,7 @@ func (qt QueryTests) assertResult(result Result, expected ...string) {
 	defer result.Release()
 	Expect(result.Len()).To.Equal(len(expected))
 	for i, resource := range expected {
-		Expect(string(result.Resources()[i])).To.Equal(resource)
+		id := result.Ids()[i]
+		Expect(qt.db.ids[id]).To.Equal(resource)
 	}
 }
