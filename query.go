@@ -95,7 +95,7 @@ func (q *Query) Execute() Result {
 
 	q.sort.RLock()
 	defer q.sort.RUnlock()
-	if sl < SmallSetTreshold && q.sort.Len() > 1000 {
+	if q.sort.CanRank() && sl < SmallSetTreshold && q.sort.Len() > 1000 {
 		return q.setExecute(q.getFilter(l, 1))
 	}
 	return q.execute(q.getFilter(l, 0))

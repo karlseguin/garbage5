@@ -134,3 +134,11 @@ func (qt QueryTests) assertResult(result Result, expected ...string) {
 		Expect(qt.db.ids[id]).To.Equal(resource)
 	}
 }
+
+func createDB() *Database {
+	db, err := New(Configure().Path("./test.db"))
+	if err != nil {
+		panic(err)
+	}
+	return db
+}
