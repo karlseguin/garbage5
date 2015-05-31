@@ -1,4 +1,4 @@
-package garbage5
+package indexes
 
 import (
 	"gopkg.in/karlseguin/intset.v1"

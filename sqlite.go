@@ -1,7 +1,8 @@
-package garbage5
+package indexes
 
 import (
 	"database/sql"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -40,7 +41,7 @@ func (s *SqliteStorage) SetCount() uint32 {
 }
 
 func (s *SqliteStorage) EachId(f func(external string, internet uint32)) error {
-	rows, err := s.DB.Query("select external, internal from ids")
+	rows, err := s.DB.Query("select eid, id from resources")
 	if err != nil {
 		return err
 	}
@@ -70,6 +71,7 @@ func (s *SqliteStorage) each(prefix, postfix string, f func(name string, ids []u
 		var count int
 		var tableName string
 		tables.Scan(&tableName)
+		tableName = `"` + tableName + `"`
 		if err := s.DB.QueryRow("select count(*) from " + tableName).Scan(&count); err != nil {
 			return err
 		}

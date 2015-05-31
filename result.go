@@ -1,4 +1,4 @@
-package garbage5
+package indexes
 
 type Result interface {
 	Release()

@@ -1,10 +1,10 @@
-package garbage5
+package indexes
 
 import (
 	"encoding/binary"
-	"github.com/karlseguin/garbage5/cache"
-	"gopkg.in/karlseguin/bytepool.v3"
 	"sync"
+
+	"gopkg.in/karlseguin/bytepool.v3"
 )
 
 var (
@@ -28,7 +28,6 @@ type Resource interface {
 
 type Database struct {
 	path     string
-	cache    *cache.Cache
 	queries  QueryPool
 	setLock  sync.RWMutex
 	listLock sync.RWMutex
@@ -39,8 +38,7 @@ type Database struct {
 
 func New(c *Configuration) (*Database, error) {
 	database := &Database{
-		path:  c.path,
-		cache: cache.New(c.cacheSize),
+		path: c.path,
 	}
 	database.queries = NewQueryPool(database, c.maxSets, c.maxResults)
 	if err := database.initialize(); err != nil {
