@@ -47,9 +47,9 @@ func (l *UnrankedList) Len() int {
 }
 
 func (l *UnrankedList) Each(desc bool, fn func(id uint32) bool) {
-	ll := len(l.ids) - 1
+	ll := len(l.ids)
 	if desc {
-		for i := ll; i != -1; i-- {
+		for i := ll - 1; i != -1; i-- {
 			if fn(l.ids[i]) == false {
 				return
 			}
