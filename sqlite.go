@@ -87,7 +87,9 @@ func (s *SqliteStorage) each(prefix, postfix string, f func(name string, ids []u
 			rows.Scan(&id)
 			ids[i] = uint32(id)
 		}
-		f(tableName[len(prefix):], ids)
+		itemName := tableName[len(prefix)+1:]
+		itemName = itemName[:len(itemName)-1]
+		f(itemName, ids)
 	}
 	return nil
 }

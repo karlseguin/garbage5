@@ -49,14 +49,14 @@ type Query struct {
 }
 
 // Specify the offset to start fetching results at
-func (q *Query) Offset(offset uint32) *Query {
-	q.offset = int(offset)
+func (q *Query) Offset(offset int) *Query {
+	q.offset = offset
 	return q
 }
 
 // Specify the maximum number of results to return
-func (q *Query) Limit(limit uint32) *Query {
-	q.limit = int(limit)
+func (q *Query) Limit(limit int) *Query {
+	q.limit = limit
 	return q
 }
 
