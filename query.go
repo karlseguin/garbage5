@@ -32,9 +32,8 @@ func NewQueryPool(db *Database, maxSets int, maxResults int) QueryPool {
 	return pool
 }
 
-func (p QueryPool) Checkout(sort List) *Query {
+func (p QueryPool) Checkout() *Query {
 	q := <-p
-	q.sort = sort
 	return q
 }
 
@@ -46,6 +45,11 @@ type Query struct {
 	sets   *Sets
 	db     *Database
 	result *NormalResult
+}
+
+func (q *Query) Sort(name string) *Query {
+	q.sort = q.db.GetList(name)
+	return q
 }
 
 // Specify the offset to start fetching results at

@@ -1,8 +1,9 @@
 package indexes
 
 import (
-	. "github.com/karlseguin/expect"
 	"testing"
+
+	. "github.com/karlseguin/expect"
 )
 
 type ResultTests struct{}
@@ -13,7 +14,7 @@ func Test_Result(t *testing.T) {
 
 func (_ ResultTests) AddIds() {
 	db := createDB()
-	result := db.Query("aa").result
+	result := db.Query().Sort("aa").result
 
 	result.add(43)
 	result.add(94)

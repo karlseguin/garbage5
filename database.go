@@ -101,8 +101,8 @@ func (db *Database) GetSet(name string) Set {
 	return s
 }
 
-func (db *Database) Query(sort string) *Query {
-	return db.queries.Checkout(db.GetList(sort))
+func (db *Database) Query() *Query {
+	return db.queries.Checkout()
 }
 
 // Close the database
