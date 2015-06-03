@@ -5,48 +5,33 @@ import (
 )
 
 type List interface {
-	Lock()
-	RLock()
-	Unlock()
-	RUnlock()
-	Len() int
-	Each(bool, func(id uint32) bool)
-	CanRank() bool
+	Set
 	Rank(id uint32) (uint32, bool)
 }
 
-type UnrankedList struct {
-	sync.RWMutex
-	ids []uint32
-}
-
 type RankedList struct {
-	*UnrankedList
+	sync.RWMutex
+	ids  []uint32
 	rank map[uint32]uint32
 }
 
 func NewList(ids []uint32) List {
 	l := uint32(len(ids))
-	unranked := &UnrankedList{ids: ids}
-	if l < 1000 {
-		return unranked
-
-	}
 	rank := make(map[uint32]uint32)
 	for i := 0 * l; i < l; i++ {
 		rank[ids[i]] = i
 	}
 	return &RankedList{
-		UnrankedList: unranked,
-		rank:         rank,
+		ids:  ids,
+		rank: rank,
 	}
 }
 
-func (l *UnrankedList) Len() int {
+func (l *RankedList) Len() int {
 	return len(l.ids)
 }
 
-func (l *UnrankedList) Each(desc bool, fn func(id uint32) bool) {
+func (l *RankedList) Each(desc bool, fn func(id uint32) bool) {
 	ll := len(l.ids)
 	if desc {
 		for i := ll - 1; i != -1; i-- {
@@ -63,16 +48,9 @@ func (l *UnrankedList) Each(desc bool, fn func(id uint32) bool) {
 	}
 }
 
-func (l *UnrankedList) CanRank() bool {
-	return false
-}
-
-func (l *UnrankedList) Rank(id uint32) (uint32, bool) {
-	return 0, false
-}
-
-func (l *RankedList) CanRank() bool {
-	return true
+func (l *RankedList) Exists(value uint32) bool {
+	_, exists := l.rank[value]
+	return exists
 }
 
 func (l *RankedList) Rank(id uint32) (uint32, bool) {

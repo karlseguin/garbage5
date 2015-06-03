@@ -1,8 +1,9 @@
 package indexes
 
 import (
-	"gopkg.in/karlseguin/intset.v1"
 	"sync"
+
+	"gopkg.in/karlseguin/intset.v1"
 )
 
 var (
@@ -16,7 +17,7 @@ type Set interface {
 	RUnlock()
 	Len() int
 	Exists(value uint32) bool
-	Each(func(uint32))
+	Each(bool, func(uint32) bool)
 }
 
 type Sets struct {
@@ -78,8 +79,10 @@ func (s *FixedSet) Exists(value uint32) bool {
 	return s.ids.Exists(value)
 }
 
-func (s *FixedSet) Each(fn func(uint32)) {
-	s.ids.Each(fn)
+func (s *FixedSet) Each(desc bool, fn func(uint32) bool) {
+	s.ids.Each(func(id uint32) {
+		fn(id)
+	})
 }
 
 type emptySet struct {
@@ -109,6 +112,6 @@ func (s *emptySet) Exists(value uint32) bool {
 	return false
 }
 
-func (s *emptySet) Each(fn func(uint32)) {
+func (s *emptySet) Each(desc bool, fn func(uint32) bool) {
 
 }

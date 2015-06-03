@@ -73,7 +73,9 @@ func (db *Database) initialize() (err error) {
 	}
 
 	return storage.EachList(func(name string, ids []uint32) {
-		db.lists[name] = NewList(ids)
+		list := NewList(ids)
+		db.lists[name] = list
+		db.sets[name] = list
 	})
 }
 

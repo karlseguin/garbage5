@@ -95,7 +95,7 @@ func (q *Query) Execute() Result {
 
 	q.sort.RLock()
 	defer q.sort.RUnlock()
-	if q.sort.CanRank() && sl < SmallSetTreshold && q.sort.Len() > 1000 {
+	if sl < SmallSetTreshold && q.sort.Len() > 1000 {
 		return q.setExecute(q.getFilter(l, 1))
 	}
 	return q.execute(q.getFilter(l, 0))
@@ -180,13 +180,14 @@ func (q *Query) execute(filter func(id uint32) bool) Result {
 
 func (q *Query) setExecute(filter Filter) Result {
 	set := q.sets.s[0]
-	set.Each(func(id uint32) {
+	set.Each(true, func(id uint32) bool {
 		if filter(id) == false {
-			return
+			return false
 		}
 		if rank, ok := q.sort.Rank(id); ok {
 			q.result.addranked(id, rank)
 		}
+		return true
 	})
 	ranks := q.result.ranked[:q.result.length]
 	sort.Sort(ranks)

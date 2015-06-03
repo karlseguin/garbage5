@@ -1,8 +1,9 @@
 package indexes
 
 import (
-	. "github.com/karlseguin/expect"
 	"testing"
+
+	. "github.com/karlseguin/expect"
 )
 
 type QueryTests struct {
@@ -40,6 +41,12 @@ func (qt QueryTests) DescendingResults() {
 	result := qt.db.Query("recent").Desc().Offset(2).Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "13r", "12r")
+}
+
+func (qt QueryTests) UsesAListAsASet() {
+	result := qt.db.Query("large").And("recent").Execute()
+	Expect(result.HasMore()).To.Equal(false)
+	qt.assertResult(result, "1r", "2r", "3r", "4r", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
 }
 
 func (qt QueryTests) OneSet() {
