@@ -26,6 +26,12 @@ func (qt QueryTests) EmptyForNoSort() {
 	Expect(result.Len()).To.Equal(0)
 }
 
+func (qt QueryTests) HandlesOnlyHavingOneSet() {
+	result := qt.db.Query().And("1").Limit(3).Execute()
+	Expect(result.HasMore()).To.Equal(true)
+	Expect(result.Len()).To.Equal(3)
+}
+
 func (qt QueryTests) LimitsNumberOfResults() {
 	result := qt.db.Query().Sort("recent").Limit(3).Execute()
 	Expect(result.HasMore()).To.Equal(true)

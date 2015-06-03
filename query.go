@@ -71,7 +71,11 @@ func (q *Query) Desc() *Query {
 
 //apply the set to the result
 func (q *Query) And(set string) *Query {
-	q.sets.Add(q.db.GetSet(set))
+	if q.sort == nil {
+		q.sort = q.db.GetSet(set)
+	} else {
+		q.sets.Add(q.db.GetSet(set))
+	}
 	return q
 }
 
@@ -82,6 +86,7 @@ func (q *Query) Execute() Result {
 		q.result.Release()
 		return EmptyResult
 	}
+
 	l := q.sets.l
 	if l == 0 {
 		return q.execute(noFilter)
@@ -227,6 +232,7 @@ func (q *Query) setExecuteAdd(result *NormalResult, id uint32) bool {
 
 // called when the result is released
 func (q *Query) release() {
+	q.sort = nil
 	q.offset = 0
 	q.limit = 50
 	q.sets.l = 0

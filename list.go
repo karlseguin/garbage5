@@ -6,7 +6,6 @@ import (
 
 type List interface {
 	Set
-	Rank(id uint32) (uint32, bool)
 }
 
 type RankedList struct {
@@ -56,4 +55,8 @@ func (l *RankedList) Exists(value uint32) bool {
 func (l *RankedList) Rank(id uint32) (uint32, bool) {
 	rank, exists := l.rank[id]
 	return rank, exists
+}
+
+func (l *RankedList) CanRank() bool {
+	return true
 }

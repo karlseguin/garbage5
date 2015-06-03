@@ -18,6 +18,8 @@ type Set interface {
 	Len() int
 	Exists(value uint32) bool
 	Each(bool, func(uint32) bool)
+	CanRank() bool
+	Rank(id uint32) (uint32, bool)
 }
 
 type Sets struct {
@@ -85,6 +87,14 @@ func (s *FixedSet) Each(desc bool, fn func(uint32) bool) {
 	})
 }
 
+func (s *FixedSet) CanRank() bool {
+	return false
+}
+
+func (s *FixedSet) Rank(id uint32) (uint32, bool) {
+	return 0, false
+}
+
 type emptySet struct {
 }
 
@@ -114,4 +124,12 @@ func (s *emptySet) Exists(value uint32) bool {
 
 func (s *emptySet) Each(desc bool, fn func(uint32) bool) {
 
+}
+
+func (s *emptySet) CanRank() bool {
+	return false
+}
+
+func (s *emptySet) Rank(id uint32) (uint32, bool) {
+	return 0, false
 }
