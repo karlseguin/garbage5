@@ -2,6 +2,9 @@ package indexes
 
 import (
 	"database/sql"
+	"fmt"
+	"strconv"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -18,8 +21,25 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 	return &SqliteStorage{db}, nil
 }
 
-func (s *SqliteStorage) Close() error {
-	return s.DB.Close()
+func (s *SqliteStorage) Fetch(ids []uint32) ([][]byte, error) {
+	l := len(ids)
+	sids := make([]string, l)
+	for i, id := range ids {
+		sids[i] = strconv.Itoa(int(id))
+	}
+	rows, err := s.Query("select data from resources where id in (" + strings.Join(sids, ",") + ")")
+	fmt.Println(strings.Join(sids, ","))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	bytes := make([][]byte, l)
+	i := 0
+	for rows.Next() {
+		rows.Scan(&bytes[i])
+		i++
+	}
+	return bytes[:i], nil
 }
 
 func (s *SqliteStorage) IdCount() uint32 {
@@ -63,7 +83,8 @@ func (s *SqliteStorage) EachList(f func(name string, ids []uint32)) error {
 }
 
 func (s *SqliteStorage) each(prefix, postfix string, f func(name string, ids []uint32)) error {
-	tables, err := s.DB.Query("select name from sqlite_master where type='table' and name like ?", prefix+"%")
+	tables, err := s.DB.Query("select name from sqlite_master where type='table' and name like ? limit 3", prefix+"%")
+	defer tables.Close()
 	if err != nil {
 		return err
 	}
@@ -87,9 +108,14 @@ func (s *SqliteStorage) each(prefix, postfix string, f func(name string, ids []u
 			rows.Scan(&id)
 			ids[i] = uint32(id)
 		}
+		rows.Close()
 		itemName := tableName[len(prefix)+1:]
 		itemName = itemName[:len(itemName)-1]
 		f(itemName, ids)
 	}
 	return nil
+}
+
+func (s *SqliteStorage) Close() error {
+	return s.DB.Close()
 }

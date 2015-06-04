@@ -5,6 +5,7 @@ type Result interface {
 	Len() int
 	Ids() []uint32
 	HasMore() bool
+	Payloads() ([][]byte, error)
 }
 
 var (
@@ -56,6 +57,10 @@ func (r *NormalResult) Ids() []uint32 {
 	return r.ids[:r.length]
 }
 
+func (r *NormalResult) Payloads() ([][]byte, error) {
+	return r.query.db.resources.Fetch(r.Ids())
+}
+
 func (r *NormalResult) HasMore() bool {
 	return r.more
 }
@@ -69,10 +74,6 @@ func (r *NormalResult) Release() {
 type emptyResult struct {
 }
 
-func (r *emptyResult) Release() {
-
-}
-
 func (r *emptyResult) Len() int {
 	return 0
 }
@@ -81,6 +82,13 @@ func (r *emptyResult) Ids() []uint32 {
 	return nil
 }
 
+func (r *emptyResult) Payloads() ([][]byte, error) {
+	return nil, nil
+}
+
 func (r *emptyResult) HasMore() bool {
 	return false
+}
+
+func (r *emptyResult) Release() {
 }

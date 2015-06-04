@@ -27,32 +27,40 @@ type Resource interface {
 }
 
 type Database struct {
-	path     string
-	queries  QueryPool
-	setLock  sync.RWMutex
-	listLock sync.RWMutex
-	sets     map[string]Set
-	lists    map[string]List
-	ids      map[uint32]string
+	path      string
+	queries   QueryPool
+	resources *Resources
+	setLock   sync.RWMutex
+	listLock  sync.RWMutex
+	storage   *SqliteStorage
+	sets      map[string]Set
+	lists     map[string]List
+	ids       map[uint32]string
 }
 
 func New(c *Configuration) (*Database, error) {
 	database := &Database{
 		path: c.path,
 	}
-	database.queries = NewQueryPool(database, c.maxSets, c.maxResults)
-	if err := database.initialize(); err != nil {
+	storage, err := database.initialize()
+	if err != nil {
+		if storage != nil {
+			storage.Close()
+		}
 		return nil, err
 	}
+
+	database.storage = storage
+	database.queries = NewQueryPool(database, c.maxSets, c.maxResults)
+	database.resources = newResources(storage.Fetch)
 	return database, nil
 }
 
-func (db *Database) initialize() (err error) {
+func (db *Database) initialize() (*SqliteStorage, error) {
 	storage, err := newSqliteStorage(db.path)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer storage.Close()
 
 	db.ids = make(map[uint32]string, storage.IdCount())
 	db.sets = make(map[string]Set, storage.SetCount())
@@ -62,21 +70,22 @@ func (db *Database) initialize() (err error) {
 		db.ids[internal] = external
 	})
 	if err != nil {
-		return err
+		return storage, err
 	}
 
 	err = storage.EachSet(func(name string, ids []uint32) {
 		db.sets[name] = NewSet(ids)
 	})
 	if err != nil {
-		return err
+		return storage, err
 	}
 
-	return storage.EachList(func(name string, ids []uint32) {
+	err = storage.EachList(func(name string, ids []uint32) {
 		list := NewList(ids)
 		db.lists[name] = list
 		db.sets[name] = list
 	})
+	return storage, err
 }
 
 // Returns the list. The list is unlocked; consumers are responsible for locking
@@ -107,5 +116,5 @@ func (db *Database) Query() *Query {
 
 // Close the database
 func (db *Database) Close() error {
-	return nil
+	return db.storage.Close()
 }
