@@ -5,7 +5,7 @@ type Result interface {
 	Len() int
 	Ids() []uint32
 	HasMore() bool
-	Payloads() ([][]byte, error)
+	Payloads() [][]byte
 }
 
 var (
@@ -32,11 +32,14 @@ func (r Ranks) Swap(i, j int) {
 }
 
 type NormalResult struct {
-	length int
-	more   bool
-	ranked Ranks
-	query  *Query
-	ids    []uint32
+	length    int
+	more      bool
+	ranked    Ranks
+	query     *Query
+	ids       []uint32
+	misses    []Miss
+	payloads  [][]byte
+	resources *Resources
 }
 
 func (r *NormalResult) add(id uint32) {
@@ -57,8 +60,8 @@ func (r *NormalResult) Ids() []uint32 {
 	return r.ids[:r.length]
 }
 
-func (r *NormalResult) Payloads() ([][]byte, error) {
-	return r.query.db.resources.Fetch(r.Ids())
+func (r *NormalResult) Payloads() [][]byte {
+	return r.payloads[:r.length]
 }
 
 func (r *NormalResult) HasMore() bool {
@@ -69,6 +72,14 @@ func (r *NormalResult) Release() {
 	r.length = 0
 	r.more = false
 	r.query.release()
+}
+
+func (r *NormalResult) fill() (Result, error) {
+	if err := r.resources.Fill(r); err != nil {
+		r.Release()
+		return EmptyResult, err
+	}
+	return r, nil
 }
 
 type emptyResult struct {
@@ -82,8 +93,8 @@ func (r *emptyResult) Ids() []uint32 {
 	return nil
 }
 
-func (r *emptyResult) Payloads() ([][]byte, error) {
-	return nil, nil
+func (r *emptyResult) Payloads() [][]byte {
+	return nil
 }
 
 func (r *emptyResult) HasMore() bool {

@@ -17,8 +17,11 @@ func NewQueryPool(db *Database, maxSets int, maxResults int) QueryPool {
 	pool := make(QueryPool, QueryPoolSize)
 	for i := 0; i < QueryPoolSize; i++ {
 		result := &NormalResult{
-			ids:    make([]uint32, maxResults),
-			ranked: make(Ranks, SmallSetTreshold),
+			resources: db.resources,
+			ids:       make([]uint32, maxResults),
+			misses:    make([]Miss, maxResults),
+			payloads:  make([][]byte, maxResults),
+			ranked:    make(Ranks, SmallSetTreshold),
 		}
 		query := &Query{
 			db:     db,
@@ -81,10 +84,10 @@ func (q *Query) And(set string) *Query {
 
 // Executes the query. After execution, the query object should not be used until
 // Release() is called on the returned result
-func (q *Query) Execute() Result {
+func (q *Query) Execute() (Result, error) {
 	if q.sort == nil || q.limit == 0 {
 		q.result.Release()
-		return EmptyResult
+		return EmptyResult, nil
 	}
 
 	l := q.sets.l
@@ -99,7 +102,7 @@ func (q *Query) Execute() Result {
 	sl := q.sets.s[0].Len()
 	if sl == 0 {
 		q.result.Release()
-		return EmptyResult
+		return EmptyResult, nil
 	}
 
 	q.sort.RLock()
@@ -167,7 +170,7 @@ func (q *Query) multiSetsFilter(start int) Filter {
 }
 
 //TODO: if len(q.sets) == 0, we could skip directly to the offset....
-func (q *Query) execute(filter func(id uint32) bool) Result {
+func (q *Query) execute(filter func(id uint32) bool) (Result, error) {
 	q.sort.Each(q.desc, func(id uint32) bool {
 		if filter(id) == false {
 			return true
@@ -184,10 +187,10 @@ func (q *Query) execute(filter func(id uint32) bool) Result {
 		}
 		return true
 	})
-	return q.result
+	return q.result.fill()
 }
 
-func (q *Query) setExecute(filter Filter) Result {
+func (q *Query) setExecute(filter Filter) (Result, error) {
 	set := q.sets.s[0]
 	set.Each(true, func(id uint32) bool {
 		if filter(id) == false {
@@ -217,7 +220,7 @@ func (q *Query) setExecute(filter Filter) Result {
 			}
 		}
 	}
-	return q.result
+	return q.result.fill()
 }
 
 func (q *Query) setExecuteAdd(result *NormalResult, id uint32) bool {

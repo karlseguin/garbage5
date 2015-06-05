@@ -2,7 +2,6 @@ package indexes
 
 import (
 	"database/sql"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -21,25 +20,23 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 	return &SqliteStorage{db}, nil
 }
 
-func (s *SqliteStorage) Fetch(ids []uint32) ([][]byte, error) {
-	l := len(ids)
+func (s *SqliteStorage) Fetch(miss []Miss) error {
+	l := len(miss)
 	sids := make([]string, l)
-	for i, id := range ids {
-		sids[i] = strconv.Itoa(int(id))
+	for i, m := range miss {
+		sids[i] = strconv.Itoa(int(m.id))
 	}
 	rows, err := s.Query("select data from resources where id in (" + strings.Join(sids, ",") + ")")
-	fmt.Println(strings.Join(sids, ","))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer rows.Close()
-	bytes := make([][]byte, l)
 	i := 0
 	for rows.Next() {
-		rows.Scan(&bytes[i])
+		rows.Scan(&miss[i].payload)
 		i++
 	}
-	return bytes[:i], nil
+	return nil
 }
 
 func (s *SqliteStorage) IdCount() uint32 {
