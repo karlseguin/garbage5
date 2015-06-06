@@ -20,11 +20,11 @@ func (_ ResultTests) AddIds() {
 	result.add(94)
 	result.add(234)
 	Expect(result.Len()).To.Equal(3)
-	Expect(result.Ids()).To.Equal([]uint32{43, 94, 234})
+	Expect(result.Ids()).To.Equal([]Id{43, 94, 234})
 
 	result.Release()
 	Expect(result.Len()).To.Equal(0)
-	Expect(result.Ids()).To.Equal([]uint32{})
+	Expect(result.Ids()).To.Equal([]Id{})
 }
 
 type FakeResource struct {

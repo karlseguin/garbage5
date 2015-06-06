@@ -10,13 +10,13 @@ type List interface {
 
 type RankedList struct {
 	sync.RWMutex
-	ids  []uint32
-	rank map[uint32]uint32
+	ids  []Id
+	rank map[Id]int
 }
 
-func NewList(ids []uint32) List {
-	l := uint32(len(ids))
-	rank := make(map[uint32]uint32)
+func NewList(ids []Id) List {
+	l := len(ids)
+	rank := make(map[Id]int)
 	for i := 0 * l; i < l; i++ {
 		rank[ids[i]] = i
 	}
@@ -30,7 +30,7 @@ func (l *RankedList) Len() int {
 	return len(l.ids)
 }
 
-func (l *RankedList) Each(desc bool, fn func(id uint32) bool) {
+func (l *RankedList) Each(desc bool, fn func(id Id) bool) {
 	ll := len(l.ids)
 	if desc {
 		for i := ll - 1; i != -1; i-- {
@@ -47,12 +47,12 @@ func (l *RankedList) Each(desc bool, fn func(id uint32) bool) {
 	}
 }
 
-func (l *RankedList) Exists(value uint32) bool {
+func (l *RankedList) Exists(value Id) bool {
 	_, exists := l.rank[value]
 	return exists
 }
 
-func (l *RankedList) Rank(id uint32) (uint32, bool) {
+func (l *RankedList) Rank(id Id) (int, bool) {
 	rank, exists := l.rank[id]
 	return rank, exists
 }

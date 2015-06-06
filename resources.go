@@ -20,7 +20,7 @@ var nullItem = &Item{
 type Fetcher func([]*Miss) error
 
 type Miss struct {
-	id      uint32
+	id      Id
 	index   int
 	payload []byte
 }
@@ -36,11 +36,11 @@ type Resources struct {
 
 type Bucket struct {
 	sync.RWMutex
-	lookup map[uint32]*Item
+	lookup map[Id]*Item
 }
 
 type Item struct {
-	id      uint32
+	id      Id
 	expires time.Time
 	value   []byte
 }
@@ -54,7 +54,7 @@ func newResources(fetcher Fetcher, configuration *Configuration) *Resources {
 	}
 	for i := 0; i < BUCKET_COUNT; i++ {
 		resources.buckets[i] = &Bucket{
-			lookup: make(map[uint32]*Item),
+			lookup: make(map[Id]*Item),
 		}
 	}
 	return resources
@@ -86,7 +86,7 @@ func (r *Resources) Fill(result *NormalResult) error {
 	return nil
 }
 
-func (r *Resources) get(id uint32) []byte {
+func (r *Resources) get(id Id) []byte {
 	bucket := r.bucket(id)
 	item := bucket.get(id)
 	if item == nil {
@@ -101,7 +101,7 @@ func (r *Resources) get(id uint32) []byte {
 	return nil
 }
 
-func (r *Resources) set(id uint32, value []byte) {
+func (r *Resources) set(id Id, value []byte) {
 	item := &Item{
 		id:      id,
 		expires: time.Now().Add(r.ttl),
@@ -114,7 +114,7 @@ func (r *Resources) set(id uint32, value []byte) {
 	}
 }
 
-func (r *Resources) bucket(id uint32) *Bucket {
+func (r *Resources) bucket(id Id) *Bucket {
 	return r.buckets[id&BUCKET_MASK]
 }
 
@@ -127,14 +127,14 @@ func (r *Resources) gc() {
 	atomic.AddInt64(&r.size, -freed)
 }
 
-func (b *Bucket) get(id uint32) *Item {
+func (b *Bucket) get(id Id) *Item {
 	b.RLock()
 	value := b.lookup[id]
 	b.RUnlock()
 	return value
 }
 
-func (b *Bucket) remove(id uint32) bool {
+func (b *Bucket) remove(id Id) bool {
 	b.Lock()
 	_, exists := b.lookup[id]
 	delete(b.lookup, id)
@@ -142,7 +142,7 @@ func (b *Bucket) remove(id uint32) bool {
 	return exists
 }
 
-func (b *Bucket) set(id uint32, item *Item) bool {
+func (b *Bucket) set(id Id, item *Item) bool {
 	b.Lock()
 	_, exists := b.lookup[id]
 	b.lookup[id] = item

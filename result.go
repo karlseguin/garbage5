@@ -3,7 +3,7 @@ package indexes
 type Result interface {
 	Release()
 	Len() int
-	Ids() []uint32
+	Ids() []Id
 	HasMore() bool
 	Payloads() [][]byte
 }
@@ -13,8 +13,8 @@ var (
 )
 
 type Ranked struct {
-	id   uint32
-	rank uint32
+	id   Id
+	rank int
 }
 
 type Ranks []Ranked
@@ -36,7 +36,7 @@ type NormalResult struct {
 	more      bool
 	ranked    Ranks
 	query     *Query
-	ids       []uint32
+	ids       []Id
 	misses    []*Miss
 	payloads  [][]byte
 	resources *Resources
@@ -45,7 +45,7 @@ type NormalResult struct {
 func newResult(resources *Resources, maxSets int, maxResults int) *NormalResult {
 	result := &NormalResult{
 		resources: resources,
-		ids:       make([]uint32, maxResults),
+		ids:       make([]Id, maxResults),
 		misses:    make([]*Miss, maxResults),
 		payloads:  make([][]byte, maxResults),
 		ranked:    make(Ranks, SmallSetTreshold),
@@ -56,12 +56,12 @@ func newResult(resources *Resources, maxSets int, maxResults int) *NormalResult 
 	return result
 }
 
-func (r *NormalResult) add(id uint32) {
+func (r *NormalResult) add(id Id) {
 	r.ids[r.length] = id
 	r.length += 1
 }
 
-func (r *NormalResult) addranked(id uint32, rank uint32) {
+func (r *NormalResult) addranked(id Id, rank int) {
 	r.ranked[r.length] = Ranked{id, rank}
 	r.length += 1
 }
@@ -70,7 +70,7 @@ func (r *NormalResult) Len() int {
 	return r.length
 }
 
-func (r *NormalResult) Ids() []uint32 {
+func (r *NormalResult) Ids() []Id {
 	return r.ids[:r.length]
 }
 
@@ -103,7 +103,7 @@ func (r *emptyResult) Len() int {
 	return 0
 }
 
-func (r *emptyResult) Ids() []uint32 {
+func (r *emptyResult) Ids() []Id {
 	return nil
 }
 

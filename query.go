@@ -11,7 +11,7 @@ var (
 
 type QueryPool chan *Query
 
-type Filter func(id uint32) bool
+type Filter func(id Id) bool
 
 func NewQueryPool(db *Database, maxSets int, maxResults int) QueryPool {
 	pool := make(QueryPool, QueryPoolSize)
@@ -124,36 +124,36 @@ func (q *Query) getFilter(count int, start int) Filter {
 	}
 }
 
-func noFilter(id uint32) bool {
+func noFilter(id Id) bool {
 	return true
 }
 
 func (q *Query) oneSetFilter(start int) Filter {
-	return func(id uint32) bool {
+	return func(id Id) bool {
 		return q.sets.s[start].Exists(id)
 	}
 }
 
 func (q *Query) twoSetsFilter(start int) Filter {
-	return func(id uint32) bool {
+	return func(id Id) bool {
 		return q.sets.s[start].Exists(id) && q.sets.s[start+1].Exists(id)
 	}
 }
 
 func (q *Query) threeSetsFilter(start int) Filter {
-	return func(id uint32) bool {
+	return func(id Id) bool {
 		return q.sets.s[start].Exists(id) && q.sets.s[start+1].Exists(id) && q.sets.s[start+2].Exists(id)
 	}
 }
 
 func (q *Query) fourSetsFilter(start int) Filter {
-	return func(id uint32) bool {
+	return func(id Id) bool {
 		return q.sets.s[start].Exists(id) && q.sets.s[start+1].Exists(id) && q.sets.s[start+2].Exists(id) && q.sets.s[start+3].Exists(id)
 	}
 }
 
 func (q *Query) multiSetsFilter(start int) Filter {
-	return func(id uint32) bool {
+	return func(id Id) bool {
 		for i := start; i < q.sets.l; i++ {
 			if q.sets.s[i].Exists(id) == false {
 				return false
@@ -164,8 +164,8 @@ func (q *Query) multiSetsFilter(start int) Filter {
 }
 
 //TODO: if len(q.sets) == 0, we could skip directly to the offset....
-func (q *Query) execute(filter func(id uint32) bool) (Result, error) {
-	q.sort.Each(q.desc, func(id uint32) bool {
+func (q *Query) execute(filter func(id Id) bool) (Result, error) {
+	q.sort.Each(q.desc, func(id Id) bool {
 		if filter(id) == false {
 			return true
 		}
@@ -186,7 +186,7 @@ func (q *Query) execute(filter func(id uint32) bool) (Result, error) {
 
 func (q *Query) setExecute(filter Filter) (Result, error) {
 	set := q.sets.s[0]
-	set.Each(true, func(id uint32) bool {
+	set.Each(true, func(id Id) bool {
 		if filter(id) == false {
 			return false
 		}
@@ -217,7 +217,7 @@ func (q *Query) setExecute(filter Filter) (Result, error) {
 	return q.result.fill()
 }
 
-func (q *Query) setExecuteAdd(result *NormalResult, id uint32) bool {
+func (q *Query) setExecuteAdd(result *NormalResult, id Id) bool {
 	if q.limit == 0 {
 		result.more = true
 		return false

@@ -39,12 +39,6 @@ func (s *SqliteStorage) Fetch(miss []*Miss) error {
 	return nil
 }
 
-func (s *SqliteStorage) IdCount() uint32 {
-	count := 0
-	s.DB.QueryRow("select count(*) from ids").Scan(&count)
-	return uint32(count)
-}
-
 func (s *SqliteStorage) ListCount() uint32 {
 	count := 0
 	s.DB.QueryRow("select count(*) from sqlite_master where type='table' and name like 'list_%'").Scan(&count)
@@ -57,29 +51,15 @@ func (s *SqliteStorage) SetCount() uint32 {
 	return uint32(count)
 }
 
-func (s *SqliteStorage) EachId(f func(external string, internet uint32)) error {
-	rows, err := s.DB.Query("select eid, id from resources")
-	if err != nil {
-		return err
-	}
-	var external string
-	var internal int
-	for rows.Next() {
-		rows.Scan(&external, &internal)
-		f(external, uint32(internal))
-	}
-	return nil
-}
-
-func (s *SqliteStorage) EachSet(f func(name string, ids []uint32)) error {
+func (s *SqliteStorage) EachSet(f func(name string, ids []Id)) error {
 	return s.each("set_", "", f)
 }
 
-func (s *SqliteStorage) EachList(f func(name string, ids []uint32)) error {
+func (s *SqliteStorage) EachList(f func(name string, ids []Id)) error {
 	return s.each("list_", " order by sort", f)
 }
 
-func (s *SqliteStorage) each(prefix, postfix string, f func(name string, ids []uint32)) error {
+func (s *SqliteStorage) each(prefix, postfix string, f func(name string, ids []Id)) error {
 	tables, err := s.DB.Query("select name from sqlite_master where type='table' and name like ?", prefix+"%")
 	defer tables.Close()
 	if err != nil {
@@ -94,7 +74,7 @@ func (s *SqliteStorage) each(prefix, postfix string, f func(name string, ids []u
 			return err
 		}
 
-		ids := make([]uint32, count)
+		ids := make([]Id, count)
 
 		rows, err := s.DB.Query("select id from " + tableName + postfix)
 		if err != nil {
@@ -103,7 +83,7 @@ func (s *SqliteStorage) each(prefix, postfix string, f func(name string, ids []u
 		for i := 0; rows.Next(); i++ {
 			var id int
 			rows.Scan(&id)
-			ids[i] = uint32(id)
+			ids[i] = Id(id)
 		}
 		rows.Close()
 		itemName := tableName[len(prefix)+1:]

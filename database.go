@@ -12,15 +12,15 @@ var (
 	bp         = bytepool.NewEndian(65536, 64, Endianness)
 )
 
+type Id uint32
+
 type Storage interface {
 	Close() error
-	IdCount() uint32
 	ListCount() uint32
 	SetCount() uint32
 	Fetch(miss []*Miss) error
-	EachId(func(external string, internet uint32)) error
-	EachSet(func(name string, ids []uint32)) error
-	EachList(func(name string, ids []uint32)) error
+	EachSet(func(name string, ids []Id)) error
+	EachList(func(name string, ids []Id)) error
 }
 
 type Resource interface {
@@ -71,14 +71,14 @@ func (db *Database) initialize() (Storage, error) {
 		return storage, err
 	}
 
-	err = storage.EachSet(func(name string, ids []uint32) {
+	err = storage.EachSet(func(name string, ids []Id) {
 		db.sets[name] = NewSet(ids)
 	})
 	if err != nil {
 		return storage, err
 	}
 
-	err = storage.EachList(func(name string, ids []uint32) {
+	err = storage.EachList(func(name string, ids []Id) {
 		list := NewList(ids)
 		db.lists[name] = list
 		db.sets[name] = list
