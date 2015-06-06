@@ -13,9 +13,11 @@ var (
 )
 
 type Storage interface {
+	Close() error
 	IdCount() uint32
 	ListCount() uint32
 	SetCount() uint32
+	Fetch(miss []*Miss) error
 	EachId(func(external string, internet uint32)) error
 	EachSet(func(name string, ids []uint32)) error
 	EachList(func(name string, ids []uint32)) error
@@ -32,10 +34,9 @@ type Database struct {
 	resources *Resources
 	setLock   sync.RWMutex
 	listLock  sync.RWMutex
-	storage   *SqliteStorage
+	storage   Storage
 	sets      map[string]Set
 	lists     map[string]List
-	ids       map[uint32]string
 }
 
 func New(c *Configuration) (*Database, error) {
@@ -57,19 +58,15 @@ func New(c *Configuration) (*Database, error) {
 	return database, nil
 }
 
-func (db *Database) initialize() (*SqliteStorage, error) {
+func (db *Database) initialize() (Storage, error) {
 	storage, err := newSqliteStorage(db.path)
 	if err != nil {
 		return nil, err
 	}
 
-	db.ids = make(map[uint32]string, storage.IdCount())
 	db.sets = make(map[string]Set, storage.SetCount())
 	db.lists = make(map[string]List, storage.ListCount())
 
-	err = storage.EachId(func(external string, internal uint32) {
-		db.ids[internal] = external
-	})
 	if err != nil {
 		return storage, err
 	}

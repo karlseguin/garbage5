@@ -35,13 +35,13 @@ func (qt QueryTests) HandlesOnlyHavingOneSet() {
 func (qt QueryTests) LimitsNumberOfResults() {
 	result, _ := qt.db.Query().Sort("recent").Limit(3).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, "1r", "2r", "3r")
+	qt.assertResult(result, 1, 2, 3)
 }
 
 func (qt QueryTests) AppliesAnOffset() {
 	result, _ := qt.db.Query().Sort("recent").Offset(2).Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, "3r", "4r")
+	qt.assertResult(result, 3, 4)
 }
 
 func (qt QueryTests) HasNoMore() {
@@ -52,73 +52,73 @@ func (qt QueryTests) HasNoMore() {
 func (qt QueryTests) DescendingResults() {
 	result, _ := qt.db.Query().Sort("recent").Desc().Offset(2).Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, "13r", "12r")
+	qt.assertResult(result, 13, 12)
 }
 
 func (qt QueryTests) UsesAListAsASet() {
 	result, _ := qt.db.Query().Sort("large").And("recent").Execute()
 	Expect(result.HasMore()).To.Equal(false)
-	qt.assertResult(result, "1r", "2r", "3r", "4r", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
+	qt.assertResult(result, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
 }
 
 func (qt QueryTests) OneSet() {
 	result, _ := qt.db.Query().Sort("recent").And("1").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, "2r", "3r")
+	qt.assertResult(result, 2, 3)
 }
 
 func (qt QueryTests) TwoSets() {
 	result, _ := qt.db.Query().Sort("recent").And("1").And("2").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, "3r", "4r")
+	qt.assertResult(result, 3, 4)
 }
 
 func (qt QueryTests) ThreeSets() {
 	result, _ := qt.db.Query().Sort("recent").And("1").And("2").And("3").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, "4r", "5r")
+	qt.assertResult(result, 4, 5)
 }
 
 func (qt QueryTests) FourSets() {
 	result, _ := qt.db.Query().Sort("recent").And("1").And("2").And("3").And("4").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, "5r", "6r")
+	qt.assertResult(result, 5, 6)
 }
 
 func (qt QueryTests) FiveSets() {
 	result, _ := qt.db.Query().Sort("recent").And("1").And("2").And("3").And("4").And("5").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, "6r", "7r")
+	qt.assertResult(result, 6, 7)
 }
 
 func (qt QueryTests) OneSetBasedFind() {
 	result, _ := qt.db.Query().Sort("large").And("1").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, "2r", "3r")
+	qt.assertResult(result, 2, 3)
 }
 
 func (qt QueryTests) TwoSetBasedFind() {
 	result, _ := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, "3r", "4r")
+	qt.assertResult(result, 3, 4)
 }
 
 func (qt QueryTests) SetBasedNoMore() {
 	result, _ := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Offset(11).Execute()
 	Expect(result.HasMore()).To.Equal(false)
-	qt.assertResult(result, "14r", "15r")
+	qt.assertResult(result, 14, 15)
 }
 
 func (qt QueryTests) SetBasedDesc() {
 	result, _ := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Offset(1).Desc().Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, "14r", "13r")
+	qt.assertResult(result, 14, 13)
 }
 
 func (qt QueryTests) SetBasedDescNoMore() {
 	result, _ := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Offset(11).Desc().Execute()
 	Expect(result.HasMore()).To.Equal(false)
-	qt.assertResult(result, "4r", "3r")
+	qt.assertResult(result, 4, 3)
 }
 
 func (qt QueryTests) SetBasedOutOfRangeOffset() {
@@ -136,7 +136,7 @@ func (qt QueryTests) Empty() {
 func (qt QueryTests) Small() {
 	result, _ := qt.db.Query().Sort("recent").And("6").Execute()
 	Expect(result.HasMore()).To.Equal(false)
-	qt.assertResult(result, "1r")
+	qt.assertResult(result, 1)
 }
 
 func (qt QueryTests) ZeroLimit() {
@@ -145,12 +145,12 @@ func (qt QueryTests) ZeroLimit() {
 	Expect(result.Len()).To.Equal(0)
 }
 
-func (qt QueryTests) assertResult(result Result, expected ...string) {
+func (qt QueryTests) assertResult(result Result, expected ...uint32) {
 	defer result.Release()
 	Expect(result.Len()).To.Equal(len(expected))
 	for i, resource := range expected {
 		id := result.Ids()[i]
-		Expect(qt.db.ids[id]).To.Equal(resource)
+		Expect(id).To.Equal(resource)
 	}
 }
 
