@@ -12,7 +12,6 @@ const (
 )
 
 var nullItem = &Item{
-	id:      0,
 	expires: time.Now().Add(time.Hour * 1000),
 	value:   nil,
 }
@@ -40,7 +39,6 @@ type Bucket struct {
 }
 
 type Item struct {
-	id      Id
 	expires time.Time
 	value   []byte
 }
@@ -103,9 +101,8 @@ func (r *Resources) get(id Id) []byte {
 
 func (r *Resources) set(id Id, value []byte) {
 	item := &Item{
-		id:      id,
-		expires: time.Now().Add(r.ttl),
 		value:   value,
+		expires: time.Now().Add(r.ttl),
 	}
 	if r.bucket(id).set(id, item) == true {
 		if atomic.AddInt64(&r.size, int64(len(value))) >= r.max && atomic.CompareAndSwapUint32(&r.gcing, 0, 1) {
@@ -153,10 +150,12 @@ func (b *Bucket) set(id Id, item *Item) bool {
 func (b *Bucket) gc() int64 {
 	visited := 0
 	oldest := nullItem
+	var oldestId Id
 
 	b.RLock()
-	for _, item := range b.lookup {
+	for id, item := range b.lookup {
 		if item.expires.Before(oldest.expires) {
+			oldestId = id
 			oldest = item
 		}
 		if visited++; visited == 10 {
@@ -166,7 +165,7 @@ func (b *Bucket) gc() int64 {
 	b.RUnlock()
 
 	b.Lock()
-	delete(b.lookup, oldest.id)
+	delete(b.lookup, oldestId)
 	b.Unlock()
 	return int64(len(oldest.value))
 }
