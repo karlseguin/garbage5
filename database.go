@@ -51,7 +51,7 @@ func New(c *Configuration) (*Database, error) {
 	}
 
 	database.storage = storage
-	database.resources = newResources(storage.Fetch)
+	database.resources = newResources(storage.Fetch, c)
 	database.queries = NewQueryPool(database, c.maxSets, c.maxResults)
 
 	return database, nil

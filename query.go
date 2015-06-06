@@ -16,13 +16,7 @@ type Filter func(id uint32) bool
 func NewQueryPool(db *Database, maxSets int, maxResults int) QueryPool {
 	pool := make(QueryPool, QueryPoolSize)
 	for i := 0; i < QueryPoolSize; i++ {
-		result := &NormalResult{
-			resources: db.resources,
-			ids:       make([]uint32, maxResults),
-			misses:    make([]Miss, maxResults),
-			payloads:  make([][]byte, maxResults),
-			ranked:    make(Ranks, SmallSetTreshold),
-		}
+		result := newResult(db.resources, maxSets, maxResults)
 		query := &Query{
 			db:     db,
 			limit:  50,

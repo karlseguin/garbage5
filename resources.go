@@ -17,7 +17,7 @@ var nullItem = &Item{
 	value:   nil,
 }
 
-type Fetcher func([]Miss) error
+type Fetcher func([]*Miss) error
 
 type Miss struct {
 	id      uint32
@@ -45,11 +45,11 @@ type Item struct {
 	value   []byte
 }
 
-func newResources(fetcher Fetcher) *Resources {
+func newResources(fetcher Fetcher, configuration *Configuration) *Resources {
 	resources := &Resources{
-		max:     1024,
 		fetcher: fetcher,
-		ttl:     time.Minute * 5,
+		ttl:     configuration.cacheTTL,
+		max:     configuration.cacheSize,
 		buckets: make([]*Bucket, BUCKET_COUNT),
 	}
 	for i := 0; i < BUCKET_COUNT; i++ {
@@ -65,7 +65,8 @@ func (r *Resources) Fill(result *NormalResult) error {
 	for i, id := range result.Ids() {
 		resource := r.get(id)
 		if resource == nil {
-			result.misses[missCount] = Miss{id, i, nil}
+			miss := result.misses[missCount]
+			miss.id, miss.index = id, i
 			missCount++
 		} else {
 			result.payloads[i] = resource

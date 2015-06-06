@@ -15,132 +15,132 @@ func Test_Query(t *testing.T) {
 }
 
 func (qt QueryTests) EmptyForInvalidSort() {
-	result := qt.db.Query().Sort("invalid").Execute()
+	result, _ := qt.db.Query().Sort("invalid").Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	Expect(result.Len()).To.Equal(0)
 }
 
 func (qt QueryTests) EmptyForNoSort() {
-	result := qt.db.Query().Execute()
+	result, _ := qt.db.Query().Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	Expect(result.Len()).To.Equal(0)
 }
 
 func (qt QueryTests) HandlesOnlyHavingOneSet() {
-	result := qt.db.Query().And("1").Limit(3).Execute()
+	result, _ := qt.db.Query().And("1").Limit(3).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	Expect(result.Len()).To.Equal(3)
 }
 
 func (qt QueryTests) LimitsNumberOfResults() {
-	result := qt.db.Query().Sort("recent").Limit(3).Execute()
+	result, _ := qt.db.Query().Sort("recent").Limit(3).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "1r", "2r", "3r")
 }
 
 func (qt QueryTests) AppliesAnOffset() {
-	result := qt.db.Query().Sort("recent").Offset(2).Limit(2).Execute()
+	result, _ := qt.db.Query().Sort("recent").Offset(2).Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "3r", "4r")
 }
 
 func (qt QueryTests) HasNoMore() {
-	result := qt.db.Query().Sort("recent").Limit(15).Execute()
+	result, _ := qt.db.Query().Sort("recent").Limit(15).Execute()
 	Expect(result.HasMore()).To.Equal(false)
 }
 
 func (qt QueryTests) DescendingResults() {
-	result := qt.db.Query().Sort("recent").Desc().Offset(2).Limit(2).Execute()
+	result, _ := qt.db.Query().Sort("recent").Desc().Offset(2).Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "13r", "12r")
 }
 
 func (qt QueryTests) UsesAListAsASet() {
-	result := qt.db.Query().Sort("large").And("recent").Execute()
+	result, _ := qt.db.Query().Sort("large").And("recent").Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	qt.assertResult(result, "1r", "2r", "3r", "4r", "5r", "6r", "7r", "8r", "9r", "10r", "11r", "12r", "13r", "14r", "15r")
 }
 
 func (qt QueryTests) OneSet() {
-	result := qt.db.Query().Sort("recent").And("1").Limit(2).Execute()
+	result, _ := qt.db.Query().Sort("recent").And("1").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "2r", "3r")
 }
 
 func (qt QueryTests) TwoSets() {
-	result := qt.db.Query().Sort("recent").And("1").And("2").Limit(2).Execute()
+	result, _ := qt.db.Query().Sort("recent").And("1").And("2").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "3r", "4r")
 }
 
 func (qt QueryTests) ThreeSets() {
-	result := qt.db.Query().Sort("recent").And("1").And("2").And("3").Limit(2).Execute()
+	result, _ := qt.db.Query().Sort("recent").And("1").And("2").And("3").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "4r", "5r")
 }
 
 func (qt QueryTests) FourSets() {
-	result := qt.db.Query().Sort("recent").And("1").And("2").And("3").And("4").Limit(2).Execute()
+	result, _ := qt.db.Query().Sort("recent").And("1").And("2").And("3").And("4").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "5r", "6r")
 }
 
 func (qt QueryTests) FiveSets() {
-	result := qt.db.Query().Sort("recent").And("1").And("2").And("3").And("4").And("5").Limit(2).Execute()
+	result, _ := qt.db.Query().Sort("recent").And("1").And("2").And("3").And("4").And("5").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "6r", "7r")
 }
 
 func (qt QueryTests) OneSetBasedFind() {
-	result := qt.db.Query().Sort("large").And("1").Limit(2).Execute()
+	result, _ := qt.db.Query().Sort("large").And("1").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "2r", "3r")
 }
 
 func (qt QueryTests) TwoSetBasedFind() {
-	result := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Execute()
+	result, _ := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "3r", "4r")
 }
 
 func (qt QueryTests) SetBasedNoMore() {
-	result := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Offset(11).Execute()
+	result, _ := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Offset(11).Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	qt.assertResult(result, "14r", "15r")
 }
 
 func (qt QueryTests) SetBasedDesc() {
-	result := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Offset(1).Desc().Execute()
+	result, _ := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Offset(1).Desc().Execute()
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, "14r", "13r")
 }
 
 func (qt QueryTests) SetBasedDescNoMore() {
-	result := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Offset(11).Desc().Execute()
+	result, _ := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Offset(11).Desc().Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	qt.assertResult(result, "4r", "3r")
 }
 
 func (qt QueryTests) SetBasedOutOfRangeOffset() {
-	result := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Desc().Offset(14).Execute()
+	result, _ := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Desc().Offset(14).Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	Expect(result.Len()).To.Equal(0)
 }
 
 func (qt QueryTests) Empty() {
-	result := qt.db.Query().Sort("recent").And("0").Execute()
+	result, _ := qt.db.Query().Sort("recent").And("0").Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	Expect(result.Len()).To.Equal(0)
 }
 
 func (qt QueryTests) Small() {
-	result := qt.db.Query().Sort("recent").And("6").Execute()
+	result, _ := qt.db.Query().Sort("recent").And("6").Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	qt.assertResult(result, "1r")
 }
 
 func (qt QueryTests) ZeroLimit() {
-	result := qt.db.Query().Sort("recent").Limit(0).Execute()
+	result, _ := qt.db.Query().Sort("recent").Limit(0).Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	Expect(result.Len()).To.Equal(0)
 }

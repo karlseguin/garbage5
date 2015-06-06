@@ -20,7 +20,7 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 	return &SqliteStorage{db}, nil
 }
 
-func (s *SqliteStorage) Fetch(miss []Miss) error {
+func (s *SqliteStorage) Fetch(miss []*Miss) error {
 	l := len(miss)
 	sids := make([]string, l)
 	for i, m := range miss {
@@ -80,7 +80,7 @@ func (s *SqliteStorage) EachList(f func(name string, ids []uint32)) error {
 }
 
 func (s *SqliteStorage) each(prefix, postfix string, f func(name string, ids []uint32)) error {
-	tables, err := s.DB.Query("select name from sqlite_master where type='table' and name like ? limit 3", prefix+"%")
+	tables, err := s.DB.Query("select name from sqlite_master where type='table' and name like ?", prefix+"%")
 	defer tables.Close()
 	if err != nil {
 		return err

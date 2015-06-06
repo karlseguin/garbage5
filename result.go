@@ -37,9 +37,23 @@ type NormalResult struct {
 	ranked    Ranks
 	query     *Query
 	ids       []uint32
-	misses    []Miss
+	misses    []*Miss
 	payloads  [][]byte
 	resources *Resources
+}
+
+func newResult(resources *Resources, maxSets int, maxResults int) *NormalResult {
+	result := &NormalResult{
+		resources: resources,
+		ids:       make([]uint32, maxResults),
+		misses:    make([]*Miss, maxResults),
+		payloads:  make([][]byte, maxResults),
+		ranked:    make(Ranks, SmallSetTreshold),
+	}
+	for i := 0; i < maxResults; i++ {
+		result.misses[i] = new(Miss)
+	}
+	return result
 }
 
 func (r *NormalResult) add(id uint32) {
