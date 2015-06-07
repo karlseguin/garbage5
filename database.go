@@ -19,8 +19,9 @@ type Storage interface {
 	ListCount() uint32
 	SetCount() uint32
 	Fetch(miss []*Miss) error
-	EachSet(func(name string, ids []Id)) error
-	EachList(func(name string, ids []Id)) error
+	EachSet(onlyNew bool, f func(name string, ids []Id)) error
+	EachList(onlyNew bool, f func(name string, ids []Id)) error
+	ClearNew() error
 }
 
 type Resource interface {
@@ -71,19 +72,7 @@ func (db *Database) initialize() (Storage, error) {
 		return storage, err
 	}
 
-	err = storage.EachSet(func(name string, ids []Id) {
-		db.sets[name] = NewSet(ids)
-	})
-	if err != nil {
-		return storage, err
-	}
-
-	err = storage.EachList(func(name string, ids []Id) {
-		list := NewList(ids)
-		db.lists[name] = list
-		db.sets[name] = list
-	})
-	return storage, err
+	return storage, db.loadData(false, storage)
 }
 
 // Returns the list. The list is unlocked; consumers are responsible for locking
@@ -112,7 +101,35 @@ func (db *Database) Query() *Query {
 	return db.queries.Checkout()
 }
 
+func (db *Database) Update() error {
+	return db.loadData(true, db.storage)
+}
+
 // Close the database
 func (db *Database) Close() error {
 	return db.storage.Close()
+}
+
+func (db *Database) loadData(newOnly bool, storage Storage) error {
+	err := storage.EachSet(newOnly, func(name string, ids []Id) {
+		set := NewSet(ids)
+		db.setLock.Lock()
+		db.sets[name] = set
+		db.setLock.Unlock()
+	})
+	if err != nil {
+		return err
+	}
+
+	err = storage.EachList(newOnly, func(name string, ids []Id) {
+		list := NewList(ids)
+		db.listLock.Lock()
+		db.lists[name] = list
+		db.listLock.Unlock()
+
+		db.setLock.Lock()
+		db.sets[name] = list
+		db.setLock.Unlock()
+	})
+	return err
 }

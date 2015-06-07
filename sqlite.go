@@ -51,20 +51,31 @@ func (s *SqliteStorage) SetCount() uint32 {
 	return uint32(count)
 }
 
-func (s *SqliteStorage) EachSet(f func(name string, ids []Id)) error {
-	return s.each("set_", "", f)
+func (s *SqliteStorage) EachSet(onlyNew bool, f func(name string, ids []Id)) error {
+	return s.each(onlyNew, "set_", "", f)
 }
 
-func (s *SqliteStorage) EachList(f func(name string, ids []Id)) error {
-	return s.each("list_", " order by sort", f)
+func (s *SqliteStorage) EachList(onlyNew bool, f func(name string, ids []Id)) error {
+	return s.each(onlyNew, "list_", " order by sort", f)
 }
 
-func (s *SqliteStorage) each(prefix, postfix string, f func(name string, ids []Id)) error {
-	tables, err := s.DB.Query("select name from sqlite_master where type='table' and name like ?", prefix+"%")
-	defer tables.Close()
+func (s *SqliteStorage) ClearNew() error {
+	_, err := s.DB.Exec("truncate table updated")
+	return err
+}
+
+func (s *SqliteStorage) each(onlyNew bool, prefix, postfix string, f func(name string, ids []Id)) error {
+	var tables *sql.Rows
+	var err error
+	if onlyNew {
+		tables, err = s.DB.Query("select name from updated where name like ?", prefix+"%")
+	} else {
+		tables, err = s.DB.Query("select name from sqlite_master where type='table' and name like ?", prefix+"%")
+	}
 	if err != nil {
 		return err
 	}
+	defer tables.Close()
 	for tables.Next() {
 		var count int
 		var tableName string
