@@ -1,8 +1,6 @@
 package indexes
 
-import (
-	"sort"
-)
+import "sort"
 
 var (
 	QueryPoolSize    = 64

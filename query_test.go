@@ -1,6 +1,7 @@
 package indexes
 
 import (
+	"os"
 	"testing"
 
 	. "github.com/karlseguin/expect"
@@ -39,7 +40,10 @@ func (qt QueryTests) LimitsNumberOfResults() {
 }
 
 func (qt QueryTests) AppliesAnOffset() {
-	result, _ := qt.db.Query().Sort("recent").Offset(2).Limit(2).Execute()
+	result, err := qt.db.Query().Sort("recent").Offset(2).Limit(2).Execute()
+	if err != nil {
+		panic(err)
+	}
 	Expect(result.HasMore()).To.Equal(true)
 	qt.assertResult(result, 3, 4)
 }
@@ -155,7 +159,13 @@ func (qt QueryTests) assertResult(result Result, expected ...uint32) {
 }
 
 func createDB() *Database {
-	db, err := New(Configure().Path("./test.db"))
+	c := Configure()
+	if os.Getenv("DB_TYPE") == "redis" {
+		c.Redis().Path("localhost:6379")
+	} else {
+		c.Path("./test.db")
+	}
+	db, err := New(c)
 	if err != nil {
 		panic(err)
 	}

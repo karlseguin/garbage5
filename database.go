@@ -3,13 +3,11 @@ package indexes
 import (
 	"encoding/binary"
 	"sync"
-
-	"gopkg.in/karlseguin/bytepool.v3"
 )
 
 var (
-	Endianness = binary.LittleEndian
-	bp         = bytepool.NewEndian(65536, 64, Endianness)
+	Endianness     = binary.LittleEndian
+	DefaultPayload = []byte("null")
 )
 
 type Id uint32
@@ -30,7 +28,6 @@ type Resource interface {
 }
 
 type Database struct {
-	path      string
 	queries   QueryPool
 	resources *Resources
 	setLock   sync.RWMutex
@@ -41,10 +38,8 @@ type Database struct {
 }
 
 func New(c *Configuration) (*Database, error) {
-	database := &Database{
-		path: c.path,
-	}
-	storage, err := database.initialize()
+	database := &Database{}
+	storage, err := database.initialize(c)
 	if err != nil {
 		if storage != nil {
 			storage.Close()
@@ -55,23 +50,20 @@ func New(c *Configuration) (*Database, error) {
 	database.storage = storage
 	database.resources = newResources(storage.Fetch, c)
 	database.queries = NewQueryPool(database, c.maxSets, c.maxResults)
-
 	return database, nil
 }
 
-func (db *Database) initialize() (Storage, error) {
-	storage, err := newSqliteStorage(db.path)
+func (db *Database) initialize(c *Configuration) (storage Storage, err error) {
+	if c.redis {
+		storage, err = newRedisStorage(c.path)
+	} else {
+		storage, err = newSqliteStorage(c.path)
+	}
 	if err != nil {
 		return nil, err
 	}
-
 	db.sets = make(map[string]Set, storage.SetCount())
 	db.lists = make(map[string]List, storage.ListCount())
-
-	if err != nil {
-		return storage, err
-	}
-
 	return storage, db.loadData(false, storage)
 }
 

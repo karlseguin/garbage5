@@ -8,6 +8,7 @@ type Configuration struct {
 	maxResults int
 	cacheSize  int64
 	cacheTTL   time.Duration
+	redis      bool
 }
 
 func Configure() *Configuration {
@@ -17,6 +18,7 @@ func Configure() *Configuration {
 		cacheSize:  64 * 1024 * 1024,
 		cacheTTL:   time.Minute * 5,
 		path:       "/tmp/indexes.db",
+		redis:      false,
 	}
 }
 
@@ -52,5 +54,12 @@ func (c *Configuration) CacheSize(size uint64) *Configuration {
 // [5 minutes]
 func (c *Configuration) CacheTTL(ttl time.Duration) *Configuration {
 	c.cacheTTL = ttl
+	return c
+}
+
+// Use redis as a store
+// [false]
+func (c *Configuration) Redis() *Configuration {
+	c.redis = true
 	return c
 }
