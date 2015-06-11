@@ -54,11 +54,7 @@ func New(c *Configuration) (*Database, error) {
 }
 
 func (db *Database) initialize(c *Configuration) (storage Storage, err error) {
-	if c.redis {
-		storage, err = newRedisStorage(c.path)
-	} else {
-		storage, err = newSqliteStorage(c.path)
-	}
+	storage, err = newSqliteStorage(c.path)
 	if err != nil {
 		return nil, err
 	}

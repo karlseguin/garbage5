@@ -41,22 +41,22 @@ func (s *SqliteStorage) Fetch(miss []*Miss) error {
 
 func (s *SqliteStorage) ListCount() uint32 {
 	count := 0
-	s.DB.QueryRow("select count(*) from sqlite_master where type='table' and name like 'list_%'").Scan(&count)
+	s.DB.QueryRow("select count(*) from names where type = 2").Scan(&count)
 	return uint32(count)
 }
 
 func (s *SqliteStorage) SetCount() uint32 {
 	count := 0
-	s.DB.QueryRow("select count(*) from sqlite_master where type='table' and name like 'set_%'").Scan(&count)
+	s.DB.QueryRow("select count(*) from names where type = 1").Scan(&count)
 	return uint32(count)
 }
 
 func (s *SqliteStorage) EachSet(onlyNew bool, f func(name string, ids []Id)) error {
-	return s.each(onlyNew, "set_", "", f)
+	return s.each(onlyNew, 1, "sets", "", f)
 }
 
 func (s *SqliteStorage) EachList(onlyNew bool, f func(name string, ids []Id)) error {
-	return s.each(onlyNew, "list_", " order by sort", f)
+	return s.each(onlyNew, 2, "lists", " order by sort", f)
 }
 
 func (s *SqliteStorage) ClearNew() error {
@@ -64,13 +64,13 @@ func (s *SqliteStorage) ClearNew() error {
 	return err
 }
 
-func (s *SqliteStorage) each(onlyNew bool, prefix, postfix string, f func(name string, ids []Id)) error {
+func (s *SqliteStorage) each(onlyNew bool, tpe int, tableName string, order string, f func(name string, ids []Id)) error {
 	var tables *sql.Rows
 	var err error
 	if onlyNew {
-		tables, err = s.DB.Query("select name from updated where name like ?", prefix+"%")
+		tables, err = s.DB.Query("select id, name from updated where type = ?", tpe)
 	} else {
-		tables, err = s.DB.Query("select name from sqlite_master where type='table' and name like ?", prefix+"%")
+		tables, err = s.DB.Query("select id, name from names where type = ?", tpe)
 	}
 	if err != nil {
 		return err
@@ -78,16 +78,15 @@ func (s *SqliteStorage) each(onlyNew bool, prefix, postfix string, f func(name s
 	defer tables.Close()
 	for tables.Next() {
 		var count int
-		var tableName string
-		tables.Scan(&tableName)
-		tableName = `"` + tableName + `"`
-		if err := s.DB.QueryRow("select count(*) from " + tableName).Scan(&count); err != nil {
+		var nameId int
+		var indexName string
+		tables.Scan(&nameId, &indexName)
+		if err := s.DB.QueryRow("select count(*) from "+tableName+" where name = ?", nameId).Scan(&count); err != nil {
 			return err
 		}
 
 		ids := make([]Id, count)
-
-		rows, err := s.DB.Query("select id from " + tableName + postfix)
+		rows, err := s.DB.Query("select id from "+tableName+" where name = ? "+order, nameId)
 		if err != nil {
 			return err
 		}
@@ -97,9 +96,7 @@ func (s *SqliteStorage) each(onlyNew bool, prefix, postfix string, f func(name s
 			ids[i] = Id(id)
 		}
 		rows.Close()
-		itemName := tableName[len(prefix)+1:]
-		itemName = itemName[:len(itemName)-1]
-		f(itemName, ids)
+		f(indexName, ids)
 	}
 	return nil
 }

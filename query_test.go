@@ -1,7 +1,6 @@
 package indexes
 
 import (
-	"os"
 	"testing"
 
 	. "github.com/karlseguin/expect"
@@ -159,12 +158,7 @@ func (qt QueryTests) assertResult(result Result, expected ...uint32) {
 }
 
 func createDB() *Database {
-	c := Configure()
-	if os.Getenv("DB_TYPE") == "redis" {
-		c.Redis().Path("localhost:6379")
-	} else {
-		c.Path("./test.db")
-	}
+	c := Configure().Path("./test.db")
 	db, err := New(c)
 	if err != nil {
 		panic(err)
