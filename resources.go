@@ -16,13 +16,7 @@ var nullItem = &Item{
 	value:   nil,
 }
 
-type Fetcher func([]*Miss) error
-
-type Miss struct {
-	id      Id
-	index   int
-	payload []byte
-}
+type Fetcher func([]interface{}, [][]byte) error
 
 type Resources struct {
 	gcing   uint32
@@ -60,25 +54,25 @@ func newResources(fetcher Fetcher, configuration *Configuration) *Resources {
 
 func (r *Resources) Fill(result *NormalResult) error {
 	missCount := 0
+	misses := result.misses
+	payloads := result.payloads
 	for i, id := range result.Ids() {
 		resource := r.get(id)
 		if resource == nil {
-			miss := result.misses[missCount]
-			miss.id, miss.index = id, i
+			misses[missCount] = i
+			missCount++
+			misses[missCount] = id
 			missCount++
 		} else {
-			result.payloads[i] = resource
+			payloads[i] = resource
 		}
 	}
-
 	if missCount > 0 {
-		misses := result.misses[:missCount]
-		if err := r.fetcher(misses); err != nil {
+		if err := r.fetcher(misses[:missCount], payloads); err != nil {
 			return err
 		}
-		for _, miss := range misses {
-			result.payloads[miss.index] = miss.payload
-			r.set(miss.id, miss.payload)
+		for i := 0; i < missCount; i += 2 {
+			r.set(misses[i+1].(Id), payloads[misses[i].(int)])
 		}
 	}
 	return nil

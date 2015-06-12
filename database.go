@@ -16,7 +16,7 @@ type Storage interface {
 	Close() error
 	ListCount() uint32
 	SetCount() uint32
-	Fetch(miss []*Miss) error
+	Fetch(miss []interface{}, payloads [][]byte) error
 	EachSet(onlyNew bool, f func(name string, ids []Id)) error
 	EachList(onlyNew bool, f func(name string, ids []Id)) error
 	ClearNew() error
