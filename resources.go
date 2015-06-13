@@ -16,7 +16,10 @@ var nullItem = &Item{
 	value:   nil,
 }
 
-type Fetcher func([]interface{}, [][]byte) error
+type Fetcher interface {
+	Fill([]interface{}, [][]byte) error
+	Get(id Id) []byte
+}
 
 type Resources struct {
 	gcing   uint32
@@ -68,7 +71,7 @@ func (r *Resources) Fill(result *NormalResult) error {
 		}
 	}
 	if missCount > 0 {
-		if err := r.fetcher(misses[:missCount], payloads); err != nil {
+		if err := r.fetcher.Fill(misses[:missCount], payloads); err != nil {
 			return err
 		}
 		for i := 0; i < missCount; i += 2 {
@@ -76,6 +79,16 @@ func (r *Resources) Fill(result *NormalResult) error {
 		}
 	}
 	return nil
+}
+
+func (r *Resources) Fetch(id Id) []byte {
+	payload := r.get(id)
+	if payload == nil {
+		if payload = r.fetcher.Get(id); payload != nil {
+			r.set(id, payload)
+		}
+	}
+	return payload
 }
 
 func (r *Resources) get(id Id) []byte {

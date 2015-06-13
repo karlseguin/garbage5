@@ -32,6 +32,7 @@ func newBatcher(db *sql.DB, count int) (batcher, error) {
 
 type SqliteStorage struct {
 	*sql.DB
+	get      *sql.Stmt
 	batchers []batcher
 }
 
@@ -41,8 +42,12 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 		return nil, err
 	}
 
-	sizes := []int{25, 20, 15, 10, 5, 4, 3, 2, 1}
+	get, err := db.Prepare("select payload from resources where id = ?")
+	if err != nil {
+		return nil, err
+	}
 
+	sizes := []int{25, 20, 15, 10, 5, 4, 3, 2, 1}
 	batchers := make([]batcher, len(sizes))
 	for i, size := range sizes {
 		batcher, err := newBatcher(db, size)
@@ -53,10 +58,19 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 		batchers[i] = batcher
 	}
 
-	return &SqliteStorage{db, batchers}, nil
+	return &SqliteStorage{
+		DB:       db,
+		get:      get,
+		batchers: batchers,
+	}, nil
 }
 
-func (s *SqliteStorage) Fetch(ids []interface{}, payloads [][]byte) error {
+func (s *SqliteStorage) Get(id Id) (payload []byte) {
+	s.get.QueryRow(id).Scan(&payload)
+	return payload
+}
+
+func (s *SqliteStorage) Fill(ids []interface{}, payloads [][]byte) error {
 	l := len(ids) / 2
 	for true {
 		var batcher batcher
@@ -97,12 +111,37 @@ func (s *SqliteStorage) SetCount() uint32 {
 	return uint32(count)
 }
 
-func (s *SqliteStorage) EachSet(onlyNew bool, f func(name string, ids []Id)) error {
-	return s.each(onlyNew, 2, f)
+func (s *SqliteStorage) LoadIds(newOnly bool) (map[string]Id, error) {
+	var count int
+	err := s.DB.QueryRow("select count(*) from resources").Scan(&count)
+	if err != nil {
+		return nil, err
+	}
+
+	var payload []byte
+	err = s.DB.QueryRow("select payload from indexes where id = 'ids'").Scan(&payload)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make(map[string]Id, count)
+	for len(payload) > 0 {
+		l := int(payload[0])
+		payload = payload[1:]
+		id := string(payload[:l])
+		payload = payload[l:]
+		ids[id] = Id(encoder.Uint32(payload))
+		payload = payload[IdSize:]
+	}
+	return ids, nil
 }
 
-func (s *SqliteStorage) EachList(onlyNew bool, f func(name string, ids []Id)) error {
-	return s.each(onlyNew, 3, f)
+func (s *SqliteStorage) EachSet(newOnly bool, f func(name string, ids []Id)) error {
+	return s.each(newOnly, 2, f)
+}
+
+func (s *SqliteStorage) EachList(newOnly bool, f func(name string, ids []Id)) error {
+	return s.each(newOnly, 3, f)
 }
 
 func (s *SqliteStorage) ClearNew() error {
@@ -110,7 +149,7 @@ func (s *SqliteStorage) ClearNew() error {
 	return err
 }
 
-func (s *SqliteStorage) each(onlyNew bool, tpe int, f func(name string, ids []Id)) error {
+func (s *SqliteStorage) each(newOnly bool, tpe int, f func(name string, ids []Id)) error {
 	indexes, err := s.DB.Query("select id, payload from indexes where type = ?", tpe)
 	if err != nil {
 		return err
@@ -122,9 +161,9 @@ func (s *SqliteStorage) each(onlyNew bool, tpe int, f func(name string, ids []Id
 		var blob []byte
 		indexes.Scan(&id, &blob)
 
-		ids := make([]Id, len(blob)/4)
-		for i := 0; i < len(blob); i += 4 {
-			ids[i/4] = Id(encoder.Uint32(blob[i:]))
+		ids := make([]Id, len(blob)/IdSize)
+		for i := 0; i < len(blob); i += IdSize {
+			ids[i/IdSize] = Id(encoder.Uint32(blob[i:]))
 		}
 		f(id, ids)
 	}

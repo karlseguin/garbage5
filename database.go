@@ -8,6 +8,7 @@ import (
 var (
 	Endianness     = binary.LittleEndian
 	DefaultPayload = []byte("null")
+	IdSize         = 4
 )
 
 type Id uint32
@@ -16,9 +17,11 @@ type Storage interface {
 	Close() error
 	ListCount() uint32
 	SetCount() uint32
-	Fetch(miss []interface{}, payloads [][]byte) error
-	EachSet(onlyNew bool, f func(name string, ids []Id)) error
-	EachList(onlyNew bool, f func(name string, ids []Id)) error
+	Fill(miss []interface{}, payloads [][]byte) error
+	Get(id Id) []byte
+	LoadIds(newOnly bool) (map[string]Id, error)
+	EachSet(newOnly bool, f func(name string, ids []Id)) error
+	EachList(newOnly bool, f func(name string, ids []Id)) error
 	ClearNew() error
 }
 
@@ -30,9 +33,11 @@ type Resource interface {
 type Database struct {
 	queries   QueryPool
 	resources *Resources
+	idLock    sync.RWMutex
 	setLock   sync.RWMutex
 	listLock  sync.RWMutex
 	storage   Storage
+	ids       map[string]Id
 	sets      map[string]Set
 	lists     map[string]List
 }
@@ -48,7 +53,7 @@ func New(c *Configuration) (*Database, error) {
 	}
 
 	database.storage = storage
-	database.resources = newResources(storage.Fetch, c)
+	database.resources = newResources(storage, c)
 	database.queries = NewQueryPool(database, c.maxSets, c.maxResults)
 	return database, nil
 }
@@ -85,6 +90,16 @@ func (db *Database) GetSet(name string) Set {
 	return s
 }
 
+func (db *Database) Get(id string) []byte {
+	db.idLock.RLock()
+	iid, exists := db.ids[id]
+	db.idLock.RUnlock()
+	if exists == false {
+		return nil
+	}
+	return db.resources.Fetch(iid)
+}
+
 func (db *Database) Query() *Query {
 	return db.queries.Checkout()
 }
@@ -99,7 +114,21 @@ func (db *Database) Close() error {
 }
 
 func (db *Database) loadData(newOnly bool, storage Storage) error {
-	err := storage.EachSet(newOnly, func(name string, ids []Id) {
+	ids, err := storage.LoadIds(newOnly)
+	if err != nil {
+		return err
+	}
+	db.idLock.Lock()
+	if newOnly {
+		for id, iid := range ids {
+			db.ids[id] = iid
+		}
+	} else {
+		db.ids = ids
+	}
+	db.idLock.Unlock()
+
+	err = storage.EachSet(newOnly, func(name string, ids []Id) {
 		set := NewSet(ids)
 		db.setLock.Lock()
 		db.sets[name] = set
