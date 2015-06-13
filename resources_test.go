@@ -1,7 +1,6 @@
 package indexes
 
 import (
-	"strconv"
 	"testing"
 	"time"
 
@@ -18,15 +17,15 @@ func Test_Resources(t *testing.T) {
 func (_ ResourcesTests) FetchesItems() {
 	_, result := buildResources(1024, time.Second*10)
 	result.add(1)
-	result.add(20)
-	result.add(321)
+	result.add(2)
+	result.add(4)
 	result.fill()
 
 	payloads := result.Payloads()
 	Expect(len(payloads)).To.Equal(3)
-	Expect(payloads[0]).To.Eql("1")
-	Expect(payloads[1]).To.Eql("20")
-	Expect(payloads[2]).To.Eql("321")
+	Expect(string(payloads[0])).To.Eql(`{"id": "1r"}`)
+	Expect(string(payloads[1])).To.Eql(`{"id": "2r"}`)
+	Expect(string(payloads[2])).To.Eql(`{"id": "4r"}`)
 }
 
 func (_ ResourcesTests) GetsItemsFromCache() {
@@ -47,53 +46,40 @@ func (_ ResourcesTests) MixesCachedAndUncachedResults() {
 	resources, result := buildResources(1024, time.Second*10)
 	resources.set(2, []byte("234"))
 	result.add(2)
-	result.add(495)
+	result.add(10)
 	result.fill()
 	payloads := result.Payloads()
 	Expect(len(payloads)).To.Equal(2)
 	Expect(payloads[0]).To.Eql("234")
-	Expect(payloads[1]).To.Eql("495")
+	Expect(payloads[1]).To.Eql(`{"id": "10r"}`)
 
-	Expect(resources.bucket(495).get(495).value).To.Eql("495")
+	Expect(resources.bucket(10).get(10).value).To.Eql(`{"id": "10r"}`)
 }
 
 func (_ ResourcesTests) DoesntReturnExpiredItem() {
 	resources, result := buildResources(1024, time.Second*-10)
 	resources.set(2, []byte("234"))
 	result.add(2)
-	result.add(495)
+	result.add(9)
 	result.fill()
 	payloads := result.Payloads()
 	Expect(len(payloads)).To.Equal(2)
-	Expect(payloads[0]).To.Eql("2")
-	Expect(payloads[1]).To.Eql("495")
+	Expect(payloads[0]).To.Eql(`{"id": "2r"}`)
+	Expect(payloads[1]).To.Eql(`{"id": "9r"}`)
 }
 
 func (_ ResourcesTests) Fetch() {
 	resources, _ := buildResources(1024, time.Second*10)
-	Expect(resources.Fetch(94)).To.Eql("94")
-	Expect(resources.Fetch(94)).To.Eql("94")
+	Expect(resources.Fetch(2)).To.Eql(`{"id": "2r"}`)
+	Expect(resources.Fetch(2)).To.Eql(`{"id": "2r"}`)
 }
 
 func buildResources(size uint64, ttl time.Duration) (*Resources, *NormalResult) {
-	resources := newResources(FakeFetcher{}, Configure().CacheSize(size).CacheTTL(ttl))
-
+	storage, err := newSqliteStorage("./test.db")
+	if err != nil {
+		panic(err)
+	}
+	resources := newResources(storage, Configure().CacheSize(size).CacheTTL(ttl))
 	result := newResult(resources, 10, 10)
 	return resources, result
-}
-
-type FakeFetcher struct {
-}
-
-func (f FakeFetcher) Fill(miss []interface{}, payloads [][]byte) error {
-	for i := 0; i < len(miss); i += 2 {
-		index := miss[i].(int)
-		body := strconv.Itoa(int(miss[i+1].(Id)))
-		payloads[index] = []byte(body)
-	}
-	return nil
-}
-
-func (f FakeFetcher) Get(id Id) []byte {
-	return []byte(strconv.Itoa(int(id)))
 }
