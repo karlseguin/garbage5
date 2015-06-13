@@ -69,6 +69,12 @@ func (_ ResourcesTests) DoesntReturnExpiredItem() {
 	Expect(payloads[1]).To.Eql("495")
 }
 
+func (_ ResourcesTests) Fetch() {
+	resources, _ := buildResources(1024, time.Second*10)
+	Expect(resources.Fetch(94)).To.Eql("94")
+	Expect(resources.Fetch(94)).To.Eql("94")
+}
+
 func buildResources(size uint64, ttl time.Duration) (*Resources, *NormalResult) {
 	resources := newResources(FakeFetcher{}, Configure().CacheSize(size).CacheTTL(ttl))
 
