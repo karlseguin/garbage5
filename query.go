@@ -4,7 +4,7 @@ import "sort"
 
 var (
 	QueryPoolSize    = 64
-	SmallSetTreshold = 100
+	SmallSetTreshold = 500
 )
 
 type QueryPool chan *Query
@@ -72,6 +72,10 @@ func (q *Query) And(set string) *Query {
 		q.sets.Add(q.db.GetSet(set))
 	}
 	return q
+}
+
+func (q *Query) HasSort() bool {
+	return q.sort != nil
 }
 
 // Executes the query. After execution, the query object should not be used until
