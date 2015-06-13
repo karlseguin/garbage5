@@ -10,7 +10,7 @@ type DatabaseTests struct {
 }
 
 func Test_Database(t *testing.T) {
-	// Expectify(&DatabaseTests{}, t)
+	Expectify(&DatabaseTests{}, t)
 }
 
 func (_ DatabaseTests) UpdateLoadsANewList() {
@@ -39,24 +39,24 @@ func (_ DatabaseTests) UpdateLoadsANewSet() {
 
 func (_ DatabaseTests) Each(t func()) {
 	sql, _ := newSqliteStorage("test.db")
-	defer sql.Close()
-	_, err := sql.Exec("delete from names where name like 'late_%'")
+	_, err := sql.Exec("delete from indexes where id like 'late_%'; delete from updated;")
 	if err != nil {
 		panic(err)
 	}
-}
-
-func cleanNewIndexes(db *Database) {
-	sql := db.storage.(*SqliteStorage)
-	_, err := sql.Exec("delete from names where name like 'late_%'")
-	if err != nil {
-		panic(err)
-	}
+	sql.Close()
+	t()
 }
 
 func fakeNewIndexes(db *Database) {
 	sql := db.storage.(*SqliteStorage)
-	_, err := sql.Exec("insert into names (id, name, type) values (3, 'late_set', 1), (4, 'late_list', 2)")
+	_, err := sql.Exec("insert into updated (id, type) values ('late_set', 2), ('late_list', 3)")
+	if err != nil {
+		panic(err)
+	}
+
+	set := []byte{1, 0, 0, 0, 4, 0, 0, 0, 10, 0, 0, 0}
+	list := []byte{8, 0, 0, 0, 10, 0, 0, 0}
+	_, err = sql.Exec("insert into indexes (id, payload, type) values ('late_set', ?, 2), ('late_list', ?, 3)", set, list)
 	if err != nil {
 		panic(err)
 	}

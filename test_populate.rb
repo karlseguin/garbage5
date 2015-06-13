@@ -11,9 +11,7 @@ initialization = [
   'pragma synchronous=off',
   'create table resources (id, payload)',
   'create table indexes (id string, payload blob, type int)',
-  # 'create table updated (id int, type int)',
-  # "insert into updated (id, type) values (3, 1)",
-  # "insert into updated (id, type) values (4, 2)",
+  'create table updated (id string, type int)',
 ]
 initialization.each{|s| db.execute(s)}
 

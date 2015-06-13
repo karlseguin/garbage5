@@ -150,7 +150,14 @@ func (s *SqliteStorage) ClearNew() error {
 }
 
 func (s *SqliteStorage) each(newOnly bool, tpe int, f func(name string, ids []Id)) error {
-	indexes, err := s.DB.Query("select id, payload from indexes where type = ?", tpe)
+	var indexes *sql.Rows
+	var err error
+
+	if newOnly {
+		indexes, err = s.DB.Query("select id, payload from indexes where id in (select id from updated where type = ?)", tpe)
+	} else {
+		indexes, err = s.DB.Query("select id, payload from indexes where type = ?", tpe)
+	}
 	if err != nil {
 		return err
 	}
