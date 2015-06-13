@@ -9,34 +9,37 @@ ids = ['1r', '2r', '3r', '4r', '5r', '6r', '7r', '8r', '9r', '10r', '11r', '12r'
 initialization = [
   'pragma journal_mode=off',
   'pragma synchronous=off',
-  'create table resources (id, data)',
-  'create table lists (id int, name text, sort)',
-  'create table sets (id int, name text)',
-  'create table names (id int, name text, type int)',
-  'create table updated (id int, type int)',
-  "insert into names (id, name, type) values (1, 'recent', 2)",
-  "insert into names (id, name, type) values (2, 'large', 2)",
-  "insert into updated (id, type) values (3, 1)",
-  "insert into updated (id, type) values (4, 2)",
+  'create table resources (id, payload)',
+  'create table indexes (id string, payload blob, type int)',
+  # 'create table updated (id int, type int)',
+  # "insert into updated (id, type) values (3, 1)",
+  # "insert into updated (id, type) values (4, 2)",
 ]
 initialization.each{|s| db.execute(s)}
 
+map = ''
+indexes = []
 ids.each_index do |index|
-  id = index + 1
-  db.execute('insert into lists (id, name, sort) values (?, ?, ?)', [id, 1, index])
+  indexes << index+1
+  eid = ids[index-1]
+  map += [eid.length].pack('c')
+  map += eid
+  map += [index].pack('V')
 end
+db.execute('insert into indexes (id, payload, type) values (?, ?, ?)', ['recent', indexes.pack('V*'), 3])
+db.execute('insert into indexes (id, payload, type) values (?, ?, ?)', ['ids', map, 1])
+# db.execute('insert into lists (id, name, sort) values (8, 4, 1)')
+# db.execute('insert into lists (id, name, sort) values (10, 4, 2)')
+#
+# db.execute('insert into sets (id, name) values (1, 3)')
+# db.execute('insert into sets (id, name) values (4, 3)')
+# db.execute('insert into sets (id, name) values (10, 3)')
 
-db.execute('insert into lists (id, name, sort) values (8, 4, 1)')
-db.execute('insert into lists (id, name, sort) values (10, 4, 2)')
-
-db.execute('insert into sets (id, name) values (1, 3)')
-db.execute('insert into sets (id, name) values (4, 3)')
-db.execute('insert into sets (id, name) values (10, 3)')
-
+indexes = []
 1005.times do |index|
-  id = index+1
-  db.execute('insert into lists (id, name, sort) values (?, ?, ?)', [id, 2, index])
+  indexes << index+1
 end
+db.execute('insert into indexes (id, payload, type) values (?, ?, ?)', ['large', indexes.pack('V*'), 3])
 
 sets = {
   '1' => ['2r', '3r', '4r', '5r', '6r', '7r', '8r', '9r', '10r', '11r', '12r', '13r', '14r', '15r'],
@@ -47,12 +50,12 @@ sets = {
   '6' => ['1r'],
 }
 
-nameId = 5
+nameId = 1
 sets.each do |name, values|
-  db.execute("insert into names (id, name, type) values (?, ?, ?)", [nameId, name, 1])
+  indexes = []
   values.each do |id|
-    id = ids.index(id)+1
-    db.execute("insert into sets (id, name) values (?, ?)", [id, nameId])
+    indexes << ids.index(id)+1
   end
+  db.execute('insert into indexes (id, payload, type) values (?, ?, ?)', [nameId, indexes.pack('V*'), 2])
   nameId += 1
 end

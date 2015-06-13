@@ -70,13 +70,24 @@ func (_ ResourcesTests) DoesntReturnExpiredItem() {
 }
 
 func buildResources(size uint64, ttl time.Duration) (*Resources, *NormalResult) {
-	resources := newResources(func(miss []*Miss) error {
-		for _, m := range miss {
-			m.payload = []byte(strconv.Itoa(int(m.id)))
-		}
-		return nil
-	}, Configure().CacheSize(size).CacheTTL(ttl))
+	resources := newResources(FakeFetcher{}, Configure().CacheSize(size).CacheTTL(ttl))
 
 	result := newResult(resources, 10, 10)
 	return resources, result
+}
+
+type FakeFetcher struct {
+}
+
+func (f FakeFetcher) Fill(miss []interface{}, payloads [][]byte) error {
+	for i := 0; i < len(miss); i += 2 {
+		index := miss[i].(int)
+		body := strconv.Itoa(int(miss[i+1].(Id)))
+		payloads[index] = []byte(body)
+	}
+	return nil
+}
+
+func (f FakeFetcher) Get(id Id) []byte {
+	return []byte(strconv.Itoa(int(id)))
 }
