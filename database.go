@@ -119,13 +119,7 @@ func (db *Database) loadData(newOnly bool, storage Storage) error {
 		return err
 	}
 	db.idLock.Lock()
-	if newOnly {
-		for id, iid := range ids {
-			db.ids[id] = iid
-		}
-	} else {
-		db.ids = ids
-	}
+	db.ids = ids
 	db.idLock.Unlock()
 
 	err = storage.EachSet(newOnly, func(name string, ids []Id) {
