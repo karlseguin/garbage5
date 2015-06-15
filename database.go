@@ -31,15 +31,15 @@ type Resource interface {
 }
 
 type Database struct {
-	queries   QueryPool
-	resources *Resources
-	idLock    sync.RWMutex
-	setLock   sync.RWMutex
-	listLock  sync.RWMutex
-	storage   Storage
-	ids       map[string]Id
-	sets      map[string]Set
-	lists     map[string]List
+	queries  QueryPool
+	cache    *Cache
+	idLock   sync.RWMutex
+	setLock  sync.RWMutex
+	listLock sync.RWMutex
+	storage  Storage
+	ids      map[string]Id
+	sets     map[string]Set
+	lists    map[string]List
 }
 
 func New(c *Configuration) (*Database, error) {
@@ -53,7 +53,7 @@ func New(c *Configuration) (*Database, error) {
 	}
 
 	database.storage = storage
-	database.resources = newResources(storage, c)
+	database.cache = newCache(storage, c)
 	database.queries = NewQueryPool(database, c.maxSets, c.maxResults)
 	return database, nil
 }
@@ -97,7 +97,7 @@ func (db *Database) Get(id string) []byte {
 	if exists == false {
 		return nil
 	}
-	return db.resources.Fetch(iid)
+	return db.cache.Fetch(iid)
 }
 
 func (db *Database) Query() *Query {

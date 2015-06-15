@@ -21,7 +21,7 @@ type Fetcher interface {
 	Get(id Id) []byte
 }
 
-type Resources struct {
+type Cache struct {
 	gcing   uint32
 	size    int64
 	max     int64
@@ -40,27 +40,27 @@ type Item struct {
 	value   []byte
 }
 
-func newResources(fetcher Fetcher, configuration *Configuration) *Resources {
-	resources := &Resources{
+func newCache(fetcher Fetcher, configuration *Configuration) *Cache {
+	cache := &Cache{
 		fetcher: fetcher,
 		ttl:     configuration.cacheTTL,
 		max:     configuration.cacheSize,
 		buckets: make([]*Bucket, BUCKET_COUNT),
 	}
 	for i := 0; i < BUCKET_COUNT; i++ {
-		resources.buckets[i] = &Bucket{
+		cache.buckets[i] = &Bucket{
 			lookup: make(map[Id]*Item),
 		}
 	}
-	return resources
+	return cache
 }
 
-func (r *Resources) Fill(result *NormalResult) error {
+func (c *Cache) Fill(result *NormalResult) error {
 	missCount := 0
 	misses := result.misses
 	payloads := result.payloads
 	for i, id := range result.Ids() {
-		resource := r.get(id)
+		resource := c.get(id)
 		if resource == nil {
 			misses[missCount] = i
 			missCount++
@@ -71,28 +71,28 @@ func (r *Resources) Fill(result *NormalResult) error {
 		}
 	}
 	if missCount > 0 {
-		if err := r.fetcher.Fill(misses[:missCount], payloads); err != nil {
+		if err := c.fetcher.Fill(misses[:missCount], payloads); err != nil {
 			return err
 		}
 		for i := 0; i < missCount; i += 2 {
-			r.set(misses[i+1].(Id), payloads[misses[i].(int)])
+			c.set(misses[i+1].(Id), payloads[misses[i].(int)])
 		}
 	}
 	return nil
 }
 
-func (r *Resources) Fetch(id Id) []byte {
-	payload := r.get(id)
+func (c *Cache) Fetch(id Id) []byte {
+	payload := c.get(id)
 	if payload == nil {
-		if payload = r.fetcher.Get(id); payload != nil {
-			r.set(id, payload)
+		if payload = c.fetcher.Get(id); payload != nil {
+			c.set(id, payload)
 		}
 	}
 	return payload
 }
 
-func (r *Resources) get(id Id) []byte {
-	bucket := r.bucket(id)
+func (c *Cache) get(id Id) []byte {
+	bucket := c.bucket(id)
 	item := bucket.get(id)
 	if item == nil {
 		return nil
@@ -101,34 +101,34 @@ func (r *Resources) get(id Id) []byte {
 		return item.value
 	}
 	if bucket.remove(id) == true {
-		atomic.AddInt64(&r.size, int64(len(item.value)))
+		atomic.AddInt64(&c.size, int64(len(item.value)))
 	}
 	return nil
 }
 
-func (r *Resources) set(id Id, value []byte) {
+func (c *Cache) set(id Id, value []byte) {
 	item := &Item{
 		value:   value,
-		expires: time.Now().Add(r.ttl),
+		expires: time.Now().Add(c.ttl),
 	}
-	if r.bucket(id).set(id, item) == true {
-		if atomic.AddInt64(&r.size, int64(len(value))) >= r.max && atomic.CompareAndSwapUint32(&r.gcing, 0, 1) {
-			go r.gc()
+	if c.bucket(id).set(id, item) == true {
+		if atomic.AddInt64(&c.size, int64(len(value))) >= c.max && atomic.CompareAndSwapUint32(&c.gcing, 0, 1) {
+			go c.gc()
 		}
 	}
 }
 
-func (r *Resources) bucket(id Id) *Bucket {
-	return r.buckets[id&BUCKET_MASK]
+func (c *Cache) bucket(id Id) *Bucket {
+	return c.buckets[id&BUCKET_MASK]
 }
 
-func (r *Resources) gc() {
-	defer atomic.StoreUint32(&r.gcing, 0)
+func (c *Cache) gc() {
+	defer atomic.StoreUint32(&c.gcing, 0)
 	freed := int64(0)
 	for i := 0; i < BUCKET_COUNT; i++ {
-		freed += r.buckets[i].gc()
+		freed += c.buckets[i].gc()
 	}
-	atomic.AddInt64(&r.size, -freed)
+	atomic.AddInt64(&c.size, -freed)
 }
 
 func (b *Bucket) get(id Id) *Item {

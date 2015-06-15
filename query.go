@@ -14,7 +14,7 @@ type Filter func(id Id) bool
 func NewQueryPool(db *Database, maxSets int, maxResults int) QueryPool {
 	pool := make(QueryPool, QueryPoolSize)
 	for i := 0; i < QueryPoolSize; i++ {
-		result := newResult(db.resources, maxSets, maxResults)
+		result := newResult(db.cache, maxSets, maxResults)
 		query := &Query{
 			db:     db,
 			limit:  50,

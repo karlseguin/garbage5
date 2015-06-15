@@ -32,23 +32,23 @@ func (r Ranks) Swap(i, j int) {
 }
 
 type NormalResult struct {
-	length    int
-	more      bool
-	ranked    Ranks
-	query     *Query
-	ids       []Id
-	misses    []interface{}
-	payloads  [][]byte
-	resources *Resources
+	length   int
+	more     bool
+	ranked   Ranks
+	query    *Query
+	ids      []Id
+	misses   []interface{}
+	payloads [][]byte
+	cache    *Cache
 }
 
-func newResult(resources *Resources, maxSets int, maxResults int) *NormalResult {
+func newResult(cache *Cache, maxSets int, maxResults int) *NormalResult {
 	result := &NormalResult{
-		resources: resources,
-		ids:       make([]Id, maxResults),
-		payloads:  make([][]byte, maxResults),
-		ranked:    make(Ranks, SmallSetTreshold),
-		misses:    make([]interface{}, maxResults*2),
+		cache:    cache,
+		ids:      make([]Id, maxResults),
+		payloads: make([][]byte, maxResults),
+		ranked:   make(Ranks, SmallSetTreshold),
+		misses:   make([]interface{}, maxResults*2),
 	}
 	return result
 }
@@ -86,7 +86,7 @@ func (r *NormalResult) Release() {
 }
 
 func (r *NormalResult) fill() (Result, error) {
-	if err := r.resources.Fill(r); err != nil {
+	if err := r.cache.Fill(r); err != nil {
 		r.Release()
 		return EmptyResult, err
 	}
