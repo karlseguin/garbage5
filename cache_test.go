@@ -79,7 +79,10 @@ func buildCache(size uint64, ttl time.Duration) (*Cache, *NormalResult) {
 	if err != nil {
 		panic(err)
 	}
-	cache := newCache(storage, Configure().CacheSize(size).CacheTTL(ttl))
+	cache, err := newCache(storage, Configure().CacheSize(size).CacheTTL(ttl))
+	if err != nil {
+		panic(err)
+	}
 	result := newResult(cache, 10, 10)
 	return cache, result
 }

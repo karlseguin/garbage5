@@ -19,6 +19,7 @@ type Storage interface {
 	SetCount() uint32
 	Fill(miss []interface{}, payloads [][]byte) error
 	Get(id Id) []byte
+	LoadNResources(n int) (map[Id][]byte, error)
 	LoadIds(newOnly bool) (map[string]Id, error)
 	EachSet(newOnly bool, f func(name string, ids []Id)) error
 	EachList(newOnly bool, f func(name string, ids []Id)) error
@@ -51,9 +52,14 @@ func New(c *Configuration) (*Database, error) {
 		}
 		return nil, err
 	}
-
 	database.storage = storage
-	database.cache = newCache(storage, c)
+
+	cache, err := newCache(storage, c)
+	if err != nil {
+		database.Close()
+		return nil, err
+	}
+	database.cache = cache
 	database.queries = NewQueryPool(database, c.maxSets, c.maxResults)
 	return database, nil
 }

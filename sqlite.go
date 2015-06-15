@@ -99,6 +99,21 @@ func (s *SqliteStorage) Fill(ids []interface{}, payloads [][]byte) error {
 	return nil
 }
 
+func (s *SqliteStorage) LoadNResources(n int) (map[Id][]byte, error) {
+	m := make(map[Id][]byte, n)
+	rows, err := s.DB.Query("select id, payload from resources order by random() limit ?", n)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var id int
+		var payload []byte
+		rows.Scan(&id, &payload)
+		m[Id(id)] = payload
+	}
+	return m, nil
+}
+
 func (s *SqliteStorage) ListCount() uint32 {
 	count := 0
 	s.DB.QueryRow("select count(*) from indexes where type = 3").Scan(&count)

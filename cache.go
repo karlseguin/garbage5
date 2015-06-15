@@ -17,6 +17,7 @@ var nullItem = &Item{
 }
 
 type Fetcher interface {
+	LoadNResources(n int) (map[Id][]byte, error)
 	Fill([]interface{}, [][]byte) error
 	Get(id Id) []byte
 }
@@ -40,7 +41,7 @@ type Item struct {
 	value   []byte
 }
 
-func newCache(fetcher Fetcher, configuration *Configuration) *Cache {
+func newCache(fetcher Fetcher, configuration *Configuration) (*Cache, error) {
 	cache := &Cache{
 		fetcher: fetcher,
 		ttl:     configuration.cacheTTL,
@@ -52,7 +53,14 @@ func newCache(fetcher Fetcher, configuration *Configuration) *Cache {
 			lookup: make(map[Id]*Item),
 		}
 	}
-	return cache
+	values, err := fetcher.LoadNResources(configuration.cachePreload)
+	if err != nil {
+		return nil, err
+	}
+	for id, payload := range values {
+		cache.set(id, payload)
+	}
+	return cache, nil
 }
 
 func (c *Cache) Fill(result *NormalResult) error {

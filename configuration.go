@@ -3,20 +3,22 @@ package indexes
 import "time"
 
 type Configuration struct {
-	path       string
-	maxSets    int
-	maxResults int
-	cacheSize  int64
-	cacheTTL   time.Duration
+	path         string
+	maxSets      int
+	maxResults   int
+	cacheSize    int64
+	cacheTTL     time.Duration
+	cachePreload int
 }
 
 func Configure() *Configuration {
 	return &Configuration{
-		maxSets:    32,
-		maxResults: 100,
-		cacheSize:  64 * 1024 * 1024,
-		cacheTTL:   time.Minute * 5,
-		path:       "/tmp/indexes.db",
+		maxSets:      32,
+		maxResults:   100,
+		cachePreload: 5000,
+		cacheSize:    64 * 1024 * 1024,
+		cacheTTL:     time.Minute * 5,
+		path:         "/tmp/indexes.db",
 	}
 }
 
@@ -52,5 +54,12 @@ func (c *Configuration) CacheSize(size uint64) *Configuration {
 // [5 minutes]
 func (c *Configuration) CacheTTL(ttl time.Duration) *Configuration {
 	c.cacheTTL = ttl
+	return c
+}
+
+// Number of items to preload into the cache
+// [5000]
+func (c *Configuration) CachePreload(count int) *Configuration {
+	c.cachePreload = count
 	return c
 }
