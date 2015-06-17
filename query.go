@@ -66,10 +66,14 @@ func (q *Query) Desc() *Query {
 
 //apply the set to the result
 func (q *Query) And(set string) *Query {
+	return q.AndSet(q.db.GetSet(set))
+}
+
+func (q *Query) AndSet(set Set) *Query {
 	if q.sort == nil {
-		q.sort = q.db.GetSet(set)
+		q.sort = set
 	} else {
-		q.sets.Add(q.db.GetSet(set))
+		q.sets.Add(set)
 	}
 	return q
 }
