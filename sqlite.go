@@ -42,7 +42,7 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 		return nil, err
 	}
 
-	get, err := db.Prepare("select ifnull(details, summary) d from resources where id = ?")
+	get, err := db.Prepare("select ifnull(details, summary) d, case when details is null then 0 else 1 end as detailed from resources where id = ?")
 	if err != nil {
 		return nil, err
 	}
@@ -65,9 +65,9 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 	}, nil
 }
 
-func (s *SqliteStorage) Get(id Id) (payload []byte) {
-	s.get.QueryRow(id).Scan(&payload)
-	return payload
+func (s *SqliteStorage) Get(id Id) (payload []byte, detailed bool) {
+	s.get.QueryRow(id).Scan(&payload, &detailed)
+	return payload, detailed
 }
 
 func (s *SqliteStorage) Fill(ids []interface{}, payloads [][]byte) error {

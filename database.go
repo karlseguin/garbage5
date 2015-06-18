@@ -18,7 +18,7 @@ type Storage interface {
 	ListCount() uint32
 	SetCount() uint32
 	Fill(miss []interface{}, payloads [][]byte) error
-	Get(id Id) []byte
+	Get(id Id) ([]byte, bool)
 	LoadNResources(n int) (map[Id][]byte, error)
 	LoadIds(newOnly bool) (map[string]Id, error)
 	EachSet(newOnly bool, f func(name string, ids []Id)) error

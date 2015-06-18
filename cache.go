@@ -11,15 +11,18 @@ const (
 	BUCKET_MASK  = 15
 )
 
-var nullItem = &Item{
-	expires: time.Now().Add(time.Hour * 1000),
-	value:   nil,
-}
+var (
+	nullItem = &Item{
+		value:   nil,
+		expires: time.Now().Add(time.Hour * 10000),
+	}
+	summaryRef = nullItem
+)
 
 type Fetcher interface {
 	LoadNResources(n int) (map[Id][]byte, error)
 	Fill([]interface{}, [][]byte) error
-	Get(id Id) []byte
+	Get(id Id) ([]byte, bool)
 }
 
 type Cache struct {
@@ -90,28 +93,50 @@ func (c *Cache) Fill(result *NormalResult) error {
 }
 
 func (c *Cache) Fetch(id Id) []byte {
-	payload := c.get(id, true)
-	if payload == nil {
-		if payload = c.fetcher.Get(id); payload != nil {
-			c.set(id, payload, true)
+	return c.fetch(id, true)
+}
+
+func (c *Cache) fetch(id Id, detailed bool) []byte {
+	item := c.getItem(id, detailed)
+	if item != nil {
+		if detailed == true && item == summaryRef {
+			return c.fetch(id, false)
 		}
+		return item.value
 	}
+
+	payload, detailed := c.fetcher.Get(id)
+	if payload == nil {
+		return nil
+	}
+	if detailed == false {
+		c.bucket(id, true).set(id, summaryRef)
+	}
+	c.set(id, payload, detailed)
 	return payload
 }
 
-func (c *Cache) get(id Id, detailed bool) []byte {
+func (c *Cache) getItem(id Id, detailed bool) *Item {
 	bucket := c.bucket(id, detailed)
 	item := bucket.get(id)
 	if item == nil {
 		return nil
 	}
 	if item.expires.After(time.Now()) {
-		return item.value
+		return item
 	}
 	if bucket.remove(id) == true {
 		atomic.AddInt64(&c.size, int64(len(item.value)))
 	}
 	return nil
+}
+
+func (c *Cache) get(id Id, detailed bool) []byte {
+	item := c.getItem(id, detailed)
+	if item == nil {
+		return nil
+	}
+	return item.value
 }
 
 func (c *Cache) set(id Id, value []byte, detailed bool) {
