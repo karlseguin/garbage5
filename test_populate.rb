@@ -33,6 +33,7 @@ indexes = []
   indexes << index+1
 end
 db.execute('insert into indexes (id, payload, type) values (?, ?, ?)', ['large', indexes.pack('V*'), 3])
+db.execute('insert into resources (id, eid, summary, details) values (?, ?, ?, ?)', [9999999, "9999999x", '{"id": "9999999x"}', nil])
 
 sets = {
   '1' => ['2r', '3r', '4r', '5r', '6r', '7r', '8r', '9r', '10r', '11r', '12r', '13r', '14r', '15r'],

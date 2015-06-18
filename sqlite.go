@@ -42,7 +42,7 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 		return nil, err
 	}
 
-	get, err := db.Prepare("select details from resources where id = ?")
+	get, err := db.Prepare("select ifnull(details, summary) d from resources where id = ?")
 	if err != nil {
 		return nil, err
 	}

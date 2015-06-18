@@ -74,6 +74,12 @@ func (_ CacheTest) Fetch() {
 	Expect(cache.Fetch(2)).To.Eql(`{"id": "2rd"}`)
 }
 
+func (_ CacheTest) FetchFallsBackToSummary() {
+	cache, _ := buildCache(1024, time.Second*10)
+	Expect(cache.Fetch(9999999)).To.Eql(`{"id": "9999999x"}`)
+	Expect(cache.Fetch(9999999)).To.Eql(`{"id": "9999999x"}`)
+}
+
 func buildCache(size uint64, ttl time.Duration) (*Cache, *NormalResult) {
 	storage, err := newSqliteStorage("./test.db")
 	if err != nil {
