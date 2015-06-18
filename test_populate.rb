@@ -9,7 +9,7 @@ ids = ['1r', '2r', '3r', '4r', '5r', '6r', '7r', '8r', '9r', '10r', '11r', '12r'
 initialization = [
   'pragma journal_mode=off',
   'pragma synchronous=off',
-  'create table resources (id, eid, payload)',
+  'create table resources (id, eid, details, summary)',
   'create table indexes (id string, payload blob, type int)',
   'create table updated (id string, type int)',
 ]
@@ -23,7 +23,7 @@ ids.each_index do |index|
   map += [eid.length].pack('c')
   map += eid
   map += [index].pack('V')
-  db.execute('insert into resources (id, eid, payload) values (?, ?, ?)', [index+1, eid, "{\"id\": \"#{eid}\"}"])
+  db.execute('insert into resources (id, eid, summary, details) values (?, ?, ?, ?)', [index+1, eid, "{\"id\": \"#{eid}\"}", "{\"id\": \"#{eid}d\"}"])
 end
 db.execute('insert into indexes (id, payload, type) values (?, ?, ?)', ['recent', indexes.pack('V*'), 3])
 db.execute('insert into indexes (id, payload, type) values (?, ?, ?)', ['ids', map, 1])

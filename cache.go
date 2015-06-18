@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	BUCKET_COUNT = 16
-	BUCKET_MASK  = BUCKET_COUNT - 1
+	BUCKET_COUNT = 32
+	BUCKET_MASK  = 15
 )
 
 var nullItem = &Item{
@@ -58,7 +58,7 @@ func newCache(fetcher Fetcher, configuration *Configuration) (*Cache, error) {
 		return nil, err
 	}
 	for id, payload := range values {
-		cache.set(id, payload)
+		cache.set(id, payload, false)
 	}
 	return cache, nil
 }
@@ -68,7 +68,7 @@ func (c *Cache) Fill(result *NormalResult) error {
 	misses := result.misses
 	payloads := result.payloads
 	for i, id := range result.Ids() {
-		resource := c.get(id)
+		resource := c.get(id, false)
 		if resource == nil {
 			misses[missCount] = i
 			missCount++
@@ -83,24 +83,24 @@ func (c *Cache) Fill(result *NormalResult) error {
 			return err
 		}
 		for i := 0; i < missCount; i += 2 {
-			c.set(misses[i+1].(Id), payloads[misses[i].(int)])
+			c.set(misses[i+1].(Id), payloads[misses[i].(int)], false)
 		}
 	}
 	return nil
 }
 
 func (c *Cache) Fetch(id Id) []byte {
-	payload := c.get(id)
+	payload := c.get(id, true)
 	if payload == nil {
 		if payload = c.fetcher.Get(id); payload != nil {
-			c.set(id, payload)
+			c.set(id, payload, true)
 		}
 	}
 	return payload
 }
 
-func (c *Cache) get(id Id) []byte {
-	bucket := c.bucket(id)
+func (c *Cache) get(id Id, detailed bool) []byte {
+	bucket := c.bucket(id, detailed)
 	item := bucket.get(id)
 	if item == nil {
 		return nil
@@ -114,20 +114,24 @@ func (c *Cache) get(id Id) []byte {
 	return nil
 }
 
-func (c *Cache) set(id Id, value []byte) {
+func (c *Cache) set(id Id, value []byte, detailed bool) {
 	item := &Item{
 		value:   value,
 		expires: time.Now().Add(c.ttl),
 	}
-	if c.bucket(id).set(id, item) == true {
+	if c.bucket(id, detailed).set(id, item) == true {
 		if atomic.AddInt64(&c.size, int64(len(value))) >= c.max && atomic.CompareAndSwapUint32(&c.gcing, 0, 1) {
 			go c.gc()
 		}
 	}
 }
 
-func (c *Cache) bucket(id Id) *Bucket {
-	return c.buckets[id&BUCKET_MASK]
+func (c *Cache) bucket(id Id, detailed bool) *Bucket {
+	if detailed {
+		return c.buckets[id&BUCKET_MASK]
+	}
+	return c.buckets[id&BUCKET_MASK+16]
+
 }
 
 func (c *Cache) gc() {

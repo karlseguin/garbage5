@@ -31,8 +31,8 @@ func (_ CacheTest) FetchesItems() {
 func (_ CacheTest) GetsItemsFromCache() {
 	cache, result := buildCache(1024, time.Second*10)
 	cache.fetcher = nil
-	cache.set(2, []byte("33"))
-	cache.set(4, []byte("44"))
+	cache.set(2, []byte("33"), false)
+	cache.set(4, []byte("44"), false)
 	result.add(2)
 	result.add(4)
 	result.fill()
@@ -44,7 +44,7 @@ func (_ CacheTest) GetsItemsFromCache() {
 
 func (_ CacheTest) MixesCachedAndUncachedResults() {
 	cache, result := buildCache(1024, time.Second*10)
-	cache.set(2, []byte("234"))
+	cache.set(2, []byte("234"), false)
 	result.add(2)
 	result.add(10)
 	result.fill()
@@ -53,12 +53,12 @@ func (_ CacheTest) MixesCachedAndUncachedResults() {
 	Expect(payloads[0]).To.Eql("234")
 	Expect(payloads[1]).To.Eql(`{"id": "10r"}`)
 
-	Expect(cache.bucket(10).get(10).value).To.Eql(`{"id": "10r"}`)
+	Expect(cache.bucket(10, false).get(10).value).To.Eql(`{"id": "10r"}`)
 }
 
 func (_ CacheTest) DoesntReturnExpiredItem() {
 	cache, result := buildCache(1024, time.Second*-10)
-	cache.set(2, []byte("234"))
+	cache.set(2, []byte("234"), false)
 	result.add(2)
 	result.add(9)
 	result.fill()
@@ -70,8 +70,8 @@ func (_ CacheTest) DoesntReturnExpiredItem() {
 
 func (_ CacheTest) Fetch() {
 	cache, _ := buildCache(1024, time.Second*10)
-	Expect(cache.Fetch(2)).To.Eql(`{"id": "2r"}`)
-	Expect(cache.Fetch(2)).To.Eql(`{"id": "2r"}`)
+	Expect(cache.Fetch(2)).To.Eql(`{"id": "2rd"}`)
+	Expect(cache.Fetch(2)).To.Eql(`{"id": "2rd"}`)
 }
 
 func buildCache(size uint64, ttl time.Duration) (*Cache, *NormalResult) {

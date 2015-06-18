@@ -20,7 +20,7 @@ type batcher struct {
 func newBatcher(db *sql.DB, count int) (batcher, error) {
 	statements := make([]string, count)
 	for i := 0; i < count; i++ {
-		statements[i] = "select payload, ? as s from resources where id = ?"
+		statements[i] = "select summary, ? as s from resources where id = ?"
 	}
 
 	stmt, err := db.Prepare(strings.Join(statements, " union all "))
@@ -42,7 +42,7 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 		return nil, err
 	}
 
-	get, err := db.Prepare("select payload from resources where id = ?")
+	get, err := db.Prepare("select details from resources where id = ?")
 	if err != nil {
 		return nil, err
 	}
@@ -86,9 +86,9 @@ func (s *SqliteStorage) Fill(ids []interface{}, payloads [][]byte) error {
 		}
 		for rows.Next() {
 			var index int
-			var payload []byte
-			rows.Scan(&payload, &index)
-			payloads[index] = payload
+			var summary []byte
+			rows.Scan(&summary, &index)
+			payloads[index] = summary
 		}
 		rows.Close()
 		if l -= batcher.count; l == 0 {
@@ -101,15 +101,15 @@ func (s *SqliteStorage) Fill(ids []interface{}, payloads [][]byte) error {
 
 func (s *SqliteStorage) LoadNResources(n int) (map[Id][]byte, error) {
 	m := make(map[Id][]byte, n)
-	rows, err := s.DB.Query("select id, payload from resources order by random() limit ?", n)
+	rows, err := s.DB.Query("select id, summary from resources order by random() limit ?", n)
 	if err != nil {
 		return nil, err
 	}
 	for rows.Next() {
 		var id int
-		var payload []byte
-		rows.Scan(&id, &payload)
-		m[Id(id)] = payload
+		var summary []byte
+		rows.Scan(&id, &summary)
+		m[Id(id)] = summary
 	}
 	return m, nil
 }
