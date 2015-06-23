@@ -126,7 +126,7 @@ func (c *Cache) getItem(id Id, detailed bool) *Item {
 		return item
 	}
 	if bucket.remove(id) == true {
-		atomic.AddInt64(&c.size, int64(len(item.value)))
+		atomic.AddInt64(&c.size, -int64(len(item.value)))
 	}
 	return nil
 }
