@@ -70,11 +70,7 @@ func (q *Query) And(set string) *Query {
 }
 
 func (q *Query) AndSet(set Set) *Query {
-	if q.sort == nil {
-		q.sort = set
-	} else {
-		q.sets.Add(set)
-	}
+	q.sets.Add(set)
 	return q
 }
 
@@ -85,7 +81,25 @@ func (q *Query) HasSort() bool {
 // Executes the query. After execution, the query object should not be used until
 // Release() is called on the returned result
 func (q *Query) Execute() (Result, error) {
-	if q.sort == nil || q.limit == 0 {
+	if q.limit == 0 {
+		q.result.Release()
+		return EmptyResult, nil
+	}
+
+	q.sets.RLock()
+	defer q.sets.RUnlock()
+	q.sets.Sort()
+
+	if q.sort == nil {
+		if q.sets.l == 0 {
+			q.result.Release()
+			return EmptyResult, nil
+		}
+
+		q.sort = q.sets.Pop()
+	}
+
+	if q.sort.Len() == 0 {
 		q.result.Release()
 		return EmptyResult, nil
 	}
@@ -94,10 +108,6 @@ func (q *Query) Execute() (Result, error) {
 	if l == 0 {
 		return q.execute(noFilter)
 	}
-
-	q.sets.RLock()
-	defer q.sets.RUnlock()
-	q.sets.Sort()
 
 	sl := q.sets.s[0].Len()
 	if sl == 0 {

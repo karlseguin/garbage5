@@ -32,6 +32,13 @@ func (sets *Sets) Add(set Set) {
 	sets.l++
 }
 
+func (sets *Sets) Pop() Set {
+	set := sets.s[0]
+	sets.s = sets.s[1:]
+	sets.l--
+	return set
+}
+
 func (sets *Sets) RLock() {
 	for i := 0; i < sets.l; i++ {
 		sets.s[i].RLock()
