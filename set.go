@@ -32,7 +32,7 @@ func (sets *Sets) Add(set Set) {
 	sets.l++
 }
 
-func (sets *Sets) Pop() Set {
+func (sets *Sets) Shift() Set {
 	set := sets.s[0]
 	sets.s = sets.s[1:]
 	sets.l--
