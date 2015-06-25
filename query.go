@@ -96,7 +96,7 @@ func (q *Query) Execute() (Result, error) {
 			return EmptyResult, nil
 		}
 
-		q.sort = q.sets.Pop()
+		q.sort = q.sets.Shift()
 	}
 
 	if q.sort.Len() == 0 {
