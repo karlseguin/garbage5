@@ -31,8 +31,8 @@ func (_ CacheTest) FetchesItems() {
 func (_ CacheTest) GetsItemsFromCache() {
 	cache, result := buildCache(1024, time.Second*10)
 	cache.fetcher = nil
-	cache.set(2, []byte("33"), false)
-	cache.set(4, []byte("44"), false)
+	cache.Set(2, []byte("33"), false)
+	cache.Set(4, []byte("44"), false)
 	result.add(2)
 	result.add(4)
 	result.fill()
@@ -44,7 +44,7 @@ func (_ CacheTest) GetsItemsFromCache() {
 
 func (_ CacheTest) MixesCachedAndUncachedResults() {
 	cache, result := buildCache(1024, time.Second*10)
-	cache.set(2, []byte("234"), false)
+	cache.Set(2, []byte("234"), false)
 	result.add(2)
 	result.add(10)
 	result.fill()
@@ -58,7 +58,7 @@ func (_ CacheTest) MixesCachedAndUncachedResults() {
 
 func (_ CacheTest) DoesntReturnExpiredItem() {
 	cache, result := buildCache(1024, time.Second*-10)
-	cache.set(2, []byte("234"), false)
+	cache.Set(2, []byte("234"), false)
 	result.add(2)
 	result.add(9)
 	result.fill()

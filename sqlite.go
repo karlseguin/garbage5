@@ -32,13 +32,14 @@ func newBatcher(db *sql.DB, count int) (batcher, error) {
 
 type SqliteStorage struct {
 	*sql.DB
-	get    *sql.Stmt
-	iIndex *sql.Stmt
-	uIndex *sql.Stmt
-	dIndex *sql.Stmt
-	// iResource *sql.Stmt
-	// uResource *sql.Stmt
-	batchers []batcher
+	get       *sql.Stmt
+	iIndex    *sql.Stmt
+	uIndex    *sql.Stmt
+	dIndex    *sql.Stmt
+	iResource *sql.Stmt
+	uResource *sql.Stmt
+	dResource *sql.Stmt
+	batchers  []batcher
 }
 
 func newSqliteStorage(path string) (*SqliteStorage, error) {
@@ -64,6 +65,19 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 		return nil, err
 	}
 
+	iResource, err := db.Prepare("insert into resources (summary, details, eid, id) values (?, ?, ?, ?)")
+	if err != nil {
+		return nil, err
+	}
+	uResource, err := db.Prepare("update resources set summary = ?, details = ?, eid = ? where id = ?")
+	if err != nil {
+		return nil, err
+	}
+	dResource, err := db.Prepare("delete from resources where id = ?")
+	if err != nil {
+		return nil, err
+	}
+
 	sizes := []int{25, 20, 15, 10, 5, 4, 3, 2, 1}
 	batchers := make([]batcher, len(sizes))
 	for i, size := range sizes {
@@ -76,12 +90,15 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 	}
 
 	return &SqliteStorage{
-		DB:       db,
-		get:      get,
-		iIndex:   iIndex,
-		uIndex:   uIndex,
-		dIndex:   dIndex,
-		batchers: batchers,
+		DB:        db,
+		get:       get,
+		iIndex:    iIndex,
+		uIndex:    uIndex,
+		dIndex:    dIndex,
+		iResource: iResource,
+		uResource: uResource,
+		dResource: dResource,
+		batchers:  batchers,
 	}, nil
 }
 
@@ -216,11 +233,8 @@ func (s *SqliteStorage) UpsertList(id string, payload []byte) ([]Id, error) {
 	return s.upsertIndex(id, 3, payload)
 }
 
-func (s *SqliteStorage) upsertIndex(id string, tpe int, payload []byte) ([]Id, error) {
-	if err := s.upsert(s.iIndex, s.uIndex, tpe, payload, id); err != nil {
-		return nil, err
-	}
-	return extractIds(payload), nil
+func (s *SqliteStorage) UpsertResource(id Id, eid string, summary []byte, details []byte) error {
+	return s.upsert(s.iResource, s.uResource, summary, details, eid, id)
 }
 
 func (s *SqliteStorage) RemoveList(id string) error {
@@ -230,6 +244,18 @@ func (s *SqliteStorage) RemoveList(id string) error {
 func (s *SqliteStorage) RemoveSet(id string) error {
 	_, err := s.dIndex.Exec(id)
 	return err
+}
+
+func (s *SqliteStorage) RemoveResource(id Id) error {
+	_, err := s.dResource.Exec(id)
+	return err
+}
+
+func (s *SqliteStorage) upsertIndex(id string, tpe int, payload []byte) ([]Id, error) {
+	if err := s.upsert(s.iIndex, s.uIndex, tpe, payload, id); err != nil {
+		return nil, err
+	}
+	return extractIds(payload), nil
 }
 
 func (s *SqliteStorage) upsert(insert *sql.Stmt, update *sql.Stmt, arguments ...interface{}) error {

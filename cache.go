@@ -61,7 +61,7 @@ func newCache(fetcher Fetcher, configuration *Configuration) (*Cache, error) {
 		return nil, err
 	}
 	for id, payload := range values {
-		cache.set(id, payload, false)
+		cache.Set(id, payload, false)
 	}
 	return cache, nil
 }
@@ -86,7 +86,7 @@ func (c *Cache) Fill(result *NormalResult) error {
 			return err
 		}
 		for i := 0; i < missCount; i += 2 {
-			c.set(misses[i+1].(Id), payloads[misses[i].(int)], false)
+			c.Set(misses[i+1].(Id), payloads[misses[i].(int)], false)
 		}
 	}
 	return nil
@@ -112,7 +112,7 @@ func (c *Cache) fetch(id Id, detailed bool) []byte {
 	if detailed == false {
 		c.bucket(id, true).set(id, summaryRef)
 	}
-	c.set(id, payload, detailed)
+	c.Set(id, payload, detailed)
 	return payload
 }
 
@@ -139,7 +139,7 @@ func (c *Cache) get(id Id, detailed bool) []byte {
 	return item.value
 }
 
-func (c *Cache) set(id Id, value []byte, detailed bool) {
+func (c *Cache) Set(id Id, value []byte, detailed bool) {
 	item := &Item{
 		value:   value,
 		expires: time.Now().Add(c.ttl),
@@ -148,6 +148,14 @@ func (c *Cache) set(id Id, value []byte, detailed bool) {
 		if atomic.AddInt64(&c.size, int64(len(value))) >= c.max && atomic.CompareAndSwapUint32(&c.gcing, 0, 1) {
 			go c.gc()
 		}
+	}
+}
+
+func (c *Cache) Remove(id Id) {
+	freed := c.bucket(id, true).sizeAndRemove(id)
+	freed += c.bucket(id, false).sizeAndRemove(id)
+	if freed > 0 {
+		atomic.AddInt64(&c.size, -freed)
 	}
 }
 
@@ -181,6 +189,16 @@ func (b *Bucket) remove(id Id) bool {
 	delete(b.lookup, id)
 	b.Unlock()
 	return exists
+}
+
+func (b *Bucket) sizeAndRemove(id Id) int64 {
+	defer b.Unlock()
+	b.Lock()
+	item, exists := b.lookup[id]
+	if !exists {
+		return 0
+	}
+	return int64(len(item.value))
 }
 
 func (b *Bucket) set(id Id, item *Item) bool {
