@@ -13,26 +13,26 @@ func Test_Database(t *testing.T) {
 	Expectify(&DatabaseTests{}, t)
 }
 
-func (_ DatabaseTests) UpdateLoadsANewList() {
+func (_ DatabaseTests) ReloadLoadsANewList() {
 	db := createDB()
 	defer db.Close()
 	res, _ := db.Query().Sort("late_list").Execute()
 	Expect(res.Len()).To.Equal(0)
 
 	fakeNewIndexes(db)
-	db.Update()
+	db.Reload()
 	res, _ = db.Query().Sort("late_list").Execute()
 	Expect(res.Len()).To.Equal(2)
 }
 
-func (_ DatabaseTests) UpdateLoadsANewSet() {
+func (_ DatabaseTests) ReloadLoadsANewSet() {
 	db := createDB()
 	defer db.Close()
 	res, _ := db.Query().And("late_set").Execute()
 	Expect(res.Len()).To.Equal(0)
 
 	fakeNewIndexes(db)
-	db.Update()
+	db.Reload()
 	res, _ = db.Query().And("late_set").Execute()
 	Expect(res.Len()).To.Equal(3)
 }

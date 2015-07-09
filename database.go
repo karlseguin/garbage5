@@ -24,6 +24,10 @@ type Storage interface {
 	EachSet(newOnly bool, f func(name string, ids []Id)) error
 	EachList(newOnly bool, f func(name string, ids []Id)) error
 	ClearNew() error
+	UpsertSet(id string, payload []byte) ([]Id, error)
+	UpsertList(id string, payload []byte) ([]Id, error)
+	RemoveSet(id string) error
+	RemoveList(id string) error
 }
 
 type Resource interface {
@@ -110,8 +114,52 @@ func (db *Database) Query() *Query {
 	return db.queries.Checkout()
 }
 
-func (db *Database) Update() error {
+func (db *Database) Reload() error {
 	return db.loadData(true, db.storage)
+}
+
+func (db *Database) UpdateSet(name string, blob []byte) error {
+	ids, err := db.storage.UpsertSet(name, blob)
+	if err != nil {
+		return err
+	}
+	set := NewSet(ids)
+	db.setLock.Lock()
+	db.sets[name] = set
+	db.setLock.Unlock()
+	return nil
+}
+
+func (db *Database) RemoveSet(name string) error {
+	if err := db.storage.RemoveSet(name); err != nil {
+		return err
+	}
+	db.setLock.Lock()
+	delete(db.sets, name)
+	db.setLock.Unlock()
+	return nil
+}
+
+func (db *Database) UpdateList(name string, blob []byte) error {
+	ids, err := db.storage.UpsertList(name, blob)
+	if err != nil {
+		return err
+	}
+	list := NewList(ids)
+	db.listLock.Lock()
+	db.lists[name] = list
+	db.listLock.Unlock()
+	return nil
+}
+
+func (db *Database) RemoveList(name string) error {
+	if err := db.storage.RemoveList(name); err != nil {
+		return err
+	}
+	db.listLock.Lock()
+	delete(db.lists, name)
+	db.listLock.Unlock()
+	return nil
 }
 
 // Close the database

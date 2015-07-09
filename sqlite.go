@@ -32,7 +32,12 @@ func newBatcher(db *sql.DB, count int) (batcher, error) {
 
 type SqliteStorage struct {
 	*sql.DB
-	get      *sql.Stmt
+	get    *sql.Stmt
+	iIndex *sql.Stmt
+	uIndex *sql.Stmt
+	dIndex *sql.Stmt
+	// iResource *sql.Stmt
+	// uResource *sql.Stmt
 	batchers []batcher
 }
 
@@ -43,6 +48,18 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 	}
 
 	get, err := db.Prepare("select ifnull(details, summary) d, case when details is null then 0 else 1 end as detailed from resources where id = ?")
+	if err != nil {
+		return nil, err
+	}
+	iIndex, err := db.Prepare("insert into indexes (type, payload, id) values (?, ?, ?)")
+	if err != nil {
+		return nil, err
+	}
+	uIndex, err := db.Prepare("update indexes set type = ?, payload = ? where id = ?")
+	if err != nil {
+		return nil, err
+	}
+	dIndex, err := db.Prepare("delete from indexes where id = ?")
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +78,9 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 	return &SqliteStorage{
 		DB:       db,
 		get:      get,
+		iIndex:   iIndex,
+		uIndex:   uIndex,
+		dIndex:   dIndex,
 		batchers: batchers,
 	}, nil
 }
@@ -183,15 +203,65 @@ func (s *SqliteStorage) each(newOnly bool, tpe int, f func(name string, ids []Id
 		var blob []byte
 		indexes.Scan(&id, &blob)
 
-		ids := make([]Id, len(blob)/IdSize)
-		for i := 0; i < len(blob); i += IdSize {
-			ids[i/IdSize] = Id(encoder.Uint32(blob[i:]))
-		}
-		f(id, ids)
+		f(id, extractIds(blob))
 	}
 	return nil
 }
 
+func (s *SqliteStorage) UpsertSet(id string, payload []byte) ([]Id, error) {
+	return s.upsertIndex(id, 2, payload)
+}
+
+func (s *SqliteStorage) UpsertList(id string, payload []byte) ([]Id, error) {
+	return s.upsertIndex(id, 3, payload)
+}
+
+func (s *SqliteStorage) upsertIndex(id string, tpe int, payload []byte) ([]Id, error) {
+	if err := s.upsert(s.iIndex, s.uIndex, tpe, payload, id); err != nil {
+		return nil, err
+	}
+	return extractIds(payload), nil
+}
+
+func (s *SqliteStorage) RemoveList(id string) error {
+	return s.RemoveSet(id)
+}
+
+func (s *SqliteStorage) RemoveSet(id string) error {
+	_, err := s.dIndex.Exec(id)
+	return err
+}
+
+func (s *SqliteStorage) upsert(insert *sql.Stmt, update *sql.Stmt, arguments ...interface{}) error {
+	tx, err := s.Begin()
+	if err != nil {
+		return err
+	}
+	insert, update = tx.Stmt(insert), tx.Stmt(update)
+
+	result, err := update.Exec(arguments...)
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 1 {
+		return nil
+	}
+	_, err = insert.Exec(arguments...)
+	return err
+}
+
 func (s *SqliteStorage) Close() error {
 	return s.DB.Close()
+}
+
+func extractIds(blob []byte) []Id {
+	ids := make([]Id, len(blob)/IdSize)
+	for i := 0; i < len(blob); i += IdSize {
+		ids[i/IdSize] = Id(encoder.Uint32(blob[i:]))
+	}
+	return ids
 }
