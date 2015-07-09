@@ -175,17 +175,7 @@ func (s *SqliteStorage) LoadIds(newOnly bool) (map[string]Id, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	ids := make(map[string]Id, count)
-	for len(payload) > 0 {
-		l := int(payload[0])
-		payload = payload[1:]
-		id := string(payload[:l])
-		payload = payload[l:]
-		ids[id] = Id(encoder.Uint32(payload))
-		payload = payload[IdSize:]
-	}
-	return ids, nil
+	return extractIdMap(payload, count), nil
 }
 
 func (s *SqliteStorage) EachSet(newOnly bool, f func(name string, ids []Id)) error {
@@ -220,7 +210,7 @@ func (s *SqliteStorage) each(newOnly bool, tpe int, f func(name string, ids []Id
 		var blob []byte
 		indexes.Scan(&id, &blob)
 
-		f(id, extractIds(blob))
+		f(id, extractIdsFromIndex(blob))
 	}
 	return nil
 }
@@ -251,11 +241,18 @@ func (s *SqliteStorage) RemoveResource(id Id) error {
 	return err
 }
 
+func (s *SqliteStorage) UpdateIds(payload []byte, estimatedCount int) (map[string]Id, error) {
+	if err := s.upsert(s.iIndex, s.uIndex, 1, payload, "ids"); err != nil {
+		return nil, err
+	}
+	return extractIdMap(payload, estimatedCount), nil
+}
+
 func (s *SqliteStorage) upsertIndex(id string, tpe int, payload []byte) ([]Id, error) {
 	if err := s.upsert(s.iIndex, s.uIndex, tpe, payload, id); err != nil {
 		return nil, err
 	}
-	return extractIds(payload), nil
+	return extractIdsFromIndex(payload), nil
 }
 
 func (s *SqliteStorage) upsert(insert *sql.Stmt, update *sql.Stmt, arguments ...interface{}) error {
@@ -284,10 +281,23 @@ func (s *SqliteStorage) Close() error {
 	return s.DB.Close()
 }
 
-func extractIds(blob []byte) []Id {
+func extractIdsFromIndex(blob []byte) []Id {
 	ids := make([]Id, len(blob)/IdSize)
 	for i := 0; i < len(blob); i += IdSize {
 		ids[i/IdSize] = Id(encoder.Uint32(blob[i:]))
+	}
+	return ids
+}
+
+func extractIdMap(payload []byte, count int) map[string]Id {
+	ids := make(map[string]Id, count)
+	for len(payload) > 0 {
+		l := int(payload[0])
+		payload = payload[1:]
+		id := string(payload[:l])
+		payload = payload[l:]
+		ids[id] = Id(encoder.Uint32(payload))
+		payload = payload[IdSize:]
 	}
 	return ids
 }
