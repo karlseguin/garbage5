@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"strings"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "gopkg.in/mattn/go-sqlite3.v1"
 )
 
 var (
