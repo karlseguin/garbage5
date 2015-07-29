@@ -35,7 +35,7 @@ func (qt QueryTests) HandlesOnlyHavingOneSet() {
 func (qt QueryTests) LimitsNumberOfResults() {
 	result, _ := qt.db.Query().Sort("recent").Limit(3).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, 1, 2, 3)
+	assertResult(result, 1, 2, 3)
 }
 
 func (qt QueryTests) AppliesAnOffset() {
@@ -44,7 +44,7 @@ func (qt QueryTests) AppliesAnOffset() {
 		panic(err)
 	}
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, 3, 4)
+	assertResult(result, 3, 4)
 }
 
 func (qt QueryTests) HasNoMore() {
@@ -55,73 +55,73 @@ func (qt QueryTests) HasNoMore() {
 func (qt QueryTests) DescendingResults() {
 	result, _ := qt.db.Query().Sort("recent").Desc().Offset(2).Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, 13, 12)
+	assertResult(result, 13, 12)
 }
 
 func (qt QueryTests) UsesAListAsASet() {
 	result, _ := qt.db.Query().Sort("large").And("recent").Execute()
 	Expect(result.HasMore()).To.Equal(false)
-	qt.assertResult(result, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+	assertResult(result, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
 }
 
 func (qt QueryTests) OneSet() {
 	result, _ := qt.db.Query().Sort("recent").And("1").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, 2, 3)
+	assertResult(result, 2, 3)
 }
 
 func (qt QueryTests) TwoSets() {
 	result, _ := qt.db.Query().Sort("recent").And("1").And("2").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, 3, 4)
+	assertResult(result, 3, 4)
 }
 
 func (qt QueryTests) ThreeSets() {
 	result, _ := qt.db.Query().Sort("recent").And("1").And("2").And("3").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, 4, 5)
+	assertResult(result, 4, 5)
 }
 
 func (qt QueryTests) FourSets() {
 	result, _ := qt.db.Query().Sort("recent").And("1").And("2").And("3").And("4").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, 5, 6)
+	assertResult(result, 5, 6)
 }
 
 func (qt QueryTests) FiveSets() {
 	result, _ := qt.db.Query().Sort("recent").And("1").And("2").And("3").And("4").And("5").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, 6, 7)
+	assertResult(result, 6, 7)
 }
 
 func (qt QueryTests) OneSetBasedFind() {
 	result, _ := qt.db.Query().Sort("large").And("1").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, 2, 3)
+	assertResult(result, 2, 3)
 }
 
 func (qt QueryTests) TwoSetBasedFind() {
 	result, _ := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, 3, 4)
+	assertResult(result, 3, 4)
 }
 
 func (qt QueryTests) SetBasedNoMore() {
 	result, _ := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Offset(11).Execute()
 	Expect(result.HasMore()).To.Equal(false)
-	qt.assertResult(result, 14, 15)
+	assertResult(result, 14, 15)
 }
 
 func (qt QueryTests) SetBasedDesc() {
 	result, _ := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Offset(1).Desc().Execute()
 	Expect(result.HasMore()).To.Equal(true)
-	qt.assertResult(result, 14, 13)
+	assertResult(result, 14, 13)
 }
 
 func (qt QueryTests) SetBasedDescNoMore() {
 	result, _ := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Offset(11).Desc().Execute()
 	Expect(result.HasMore()).To.Equal(false)
-	qt.assertResult(result, 4, 3)
+	assertResult(result, 4, 3)
 }
 
 func (qt QueryTests) SetBasedOutOfRangeOffset() {
@@ -139,7 +139,7 @@ func (qt QueryTests) Empty() {
 func (qt QueryTests) Small() {
 	result, _ := qt.db.Query().Sort("recent").And("6").Execute()
 	Expect(result.HasMore()).To.Equal(false)
-	qt.assertResult(result, 1)
+	assertResult(result, 1)
 }
 
 func (qt QueryTests) ZeroLimit() {
@@ -148,7 +148,7 @@ func (qt QueryTests) ZeroLimit() {
 	Expect(result.Len()).To.Equal(0)
 }
 
-func (qt QueryTests) assertResult(result Result, expected ...uint32) {
+func assertResult(result Result, expected ...uint32) {
 	defer result.Release()
 	Expect(result.Len()).To.Equal(len(expected))
 	for i, resource := range expected {

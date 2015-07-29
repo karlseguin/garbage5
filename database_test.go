@@ -37,6 +37,15 @@ func (_ DatabaseTests) ReloadLoadsANewSet() {
 	Expect(res.Len()).To.Equal(3)
 }
 
+func (_ DatabaseTests) QueriesIds() {
+	db := createDB()
+	defer db.Close()
+	result, _ := db.QueryIds("8r", "1r", "4r", "7r").Execute()
+	Expect(result.HasMore()).To.Equal(false)
+	assertResult(result, 7, 0, 3, 6)
+
+}
+
 func (_ DatabaseTests) Each(t func()) {
 	sql, _ := newSqliteStorage("test.db")
 	_, err := sql.Exec("delete from indexes where id like 'late_%'; delete from updated;")

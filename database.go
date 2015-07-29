@@ -113,6 +113,16 @@ func (db *Database) Get(id string) []byte {
 	return db.cache.Fetch(iid)
 }
 
+func (db *Database) QueryIds(ids ...string) *Query {
+	iids := make(SimpleList, len(ids))
+	db.idLock.RLock()
+	for i, id := range ids {
+		iids[i] = db.ids[id]
+	}
+	db.idLock.RUnlock()
+	return db.Query().SortList(iids)
+}
+
 func (db *Database) Query() *Query {
 	return db.queries.Checkout()
 }

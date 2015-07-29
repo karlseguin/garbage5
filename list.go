@@ -31,18 +31,17 @@ func (l *RankedList) Len() int {
 }
 
 func (l *RankedList) Each(desc bool, fn func(id Id) bool) {
-	ll := len(l.ids)
-	if desc {
-		for i := ll - 1; i != -1; i-- {
-			if fn(l.ids[i]) == false {
+	if !desc {
+		for _, id := range l.ids {
+			if !fn(id) {
 				return
 			}
 		}
-	} else {
-		for i := 0; i != ll; i++ {
-			if fn(l.ids[i]) == false {
-				return
-			}
+		return
+	}
+	for i := len(l.ids) - 1; i != -1; i-- {
+		if fn(l.ids[i]) == false {
+			return
 		}
 	}
 }
@@ -59,4 +58,55 @@ func (l *RankedList) Rank(id Id) (int, bool) {
 
 func (l *RankedList) CanRank() bool {
 	return true
+}
+
+type SimpleList []Id
+
+func (s SimpleList) Lock() {
+	// too simple!
+}
+
+func (s SimpleList) RLock() {
+	// too simple!
+}
+
+func (s SimpleList) Unlock() {
+	// too simple!
+}
+
+func (s SimpleList) RUnlock() {
+	// too simple!
+}
+
+func (s SimpleList) Len() int {
+	return len(s)
+}
+
+func (s SimpleList) Exists(value Id) bool {
+	return false
+}
+
+func (s SimpleList) Each(desc bool, fn func(Id) bool) {
+	if !desc {
+		for _, id := range s {
+			if !fn(id) {
+				return
+			}
+		}
+		return
+	}
+
+	for i := len(s) - 1; i != -1; i-- {
+		if !fn(s[i]) {
+			return
+		}
+	}
+}
+
+func (s SimpleList) CanRank() bool {
+	return false
+}
+
+func (s SimpleList) Rank(id Id) (int, bool) {
+	return -1, false
 }

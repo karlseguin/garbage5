@@ -47,6 +47,11 @@ func (q *Query) Sort(name string) *Query {
 	return q
 }
 
+func (q *Query) SortList(list List) *Query {
+	q.sort = list
+	return q
+}
+
 // Specify the offset to start fetching results at
 func (q *Query) Offset(offset int) *Query {
 	q.offset = offset
@@ -117,7 +122,7 @@ func (q *Query) Execute() (Result, error) {
 
 	q.sort.RLock()
 	defer q.sort.RUnlock()
-	if sl < SmallSetTreshold && q.sort.Len() > 1000 {
+	if sl < SmallSetTreshold && q.sort.Len() > 1000 && q.sort.CanRank() {
 		return q.setExecute(q.getFilter(l, 1))
 	}
 	return q.execute(q.getFilter(l, 0))
