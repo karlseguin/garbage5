@@ -73,6 +73,7 @@ func (c *Cache) Fill(result *NormalResult) error {
 	for i, id := range result.Ids() {
 		resource := c.get(id, false)
 		if resource == nil {
+			payloads[i] = nil
 			misses[missCount] = i
 			missCount++
 			misses[missCount] = id

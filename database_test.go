@@ -43,7 +43,33 @@ func (_ DatabaseTests) QueriesIds() {
 	result, _ := db.QueryIds("8r", "1r", "4r", "7r").Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	assertResult(result, 7, 0, 3, 6)
+}
 
+func (_ DatabaseTests) QueryIdsNull() {
+	db := createDB()
+	defer db.Close()
+	result, _ := db.QueryIds("8r", "293r").Execute()
+	payloads := result.Payloads()
+	Expect(result.HasMore()).To.Equal(false)
+	Expect(result.Len()).To.Equal(2)
+	Expect(string(payloads[0])).To.Equal(JSON(`{"id": "7r"}`))
+	Expect(payloads[1]).To.Equal(nil)
+}
+
+func (_ DatabaseTests) QueryIdsDoesntOverflow() {
+	QueryPoolSize = 1
+	defer func() { QueryPoolSize = 10 }()
+
+	db := createDB()
+	defer db.Close()
+	result, _ := db.QueryIds("8r", "7r").Execute()
+	result.Release()
+
+	result, _ = db.QueryIds("8r", "23r").Execute()
+	payloads := result.Payloads()
+	Expect(result.Len()).To.Equal(2)
+	Expect(string(payloads[0])).To.Equal(JSON(`{"id": "7r"}`))
+	Expect(payloads[1]).To.Equal(nil)
 }
 
 func (_ DatabaseTests) Each(t func()) {
