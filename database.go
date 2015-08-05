@@ -110,6 +110,10 @@ func (db *Database) Get(id string) []byte {
 	if exists == false {
 		return nil
 	}
+	return db.GetInternal(iid)
+}
+
+func (db *Database) GetInternal(iid Id) []byte {
 	return db.cache.Fetch(iid)
 }
 
