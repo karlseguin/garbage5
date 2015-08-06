@@ -138,7 +138,7 @@ func (s *SqliteStorage) Fill(ids []interface{}, payloads [][]byte) error {
 
 func (s *SqliteStorage) LoadNResources(n int) (map[Id][]byte, error) {
 	m := make(map[Id][]byte, n)
-	rows, err := s.DB.Query("select id, summary from resources order by random() limit ?", n)
+	rows, err := s.DB.Query("select id, summary from resources order by id desc limit ?", n)
 	if err != nil {
 		return nil, err
 	}
