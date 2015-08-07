@@ -21,7 +21,7 @@ var (
 
 type Fetcher interface {
 	LoadNResources(n int) (map[Id][]byte, error)
-	Fill([]interface{}, [][]byte) error
+	Fill([]interface{}, [][]byte, bool) error
 	Get(id Id) ([]byte, bool)
 }
 
@@ -66,12 +66,12 @@ func newCache(fetcher Fetcher, configuration *Configuration) (*Cache, error) {
 	return cache, nil
 }
 
-func (c *Cache) Fill(result *NormalResult) error {
+func (c *Cache) Fill(result *NormalResult, detailed bool) error {
 	missCount := 0
 	misses := result.misses
 	payloads := result.payloads
 	for i, id := range result.Ids() {
-		resource := c.get(id, false)
+		resource := c.get(id, detailed)
 		if resource == nil {
 			payloads[i] = nil
 			misses[missCount] = i
@@ -83,11 +83,11 @@ func (c *Cache) Fill(result *NormalResult) error {
 		}
 	}
 	if missCount > 0 {
-		if err := c.fetcher.Fill(misses[:missCount], payloads); err != nil {
+		if err := c.fetcher.Fill(misses[:missCount], payloads, detailed); err != nil {
 			return err
 		}
 		for i := 0; i < missCount; i += 2 {
-			c.Set(misses[i+1].(Id), payloads[misses[i].(int)], false)
+			c.Set(misses[i+1].(Id), payloads[misses[i].(int)], detailed)
 		}
 	}
 	return nil

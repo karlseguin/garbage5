@@ -38,6 +38,20 @@ func (qt QueryTests) LimitsNumberOfResults() {
 	assertResult(result, 1, 2, 3)
 }
 
+func (qt QueryTests) RetrievesResultSummary() {
+	result, _ := qt.db.Query().Sort("recent").Limit(2).Execute()
+	payloads := result.Payloads()
+	Expect(payloads[0]).To.Equal(JSON(`{"id": "1r"}`))
+	Expect(payloads[1]).To.Equal(JSON(`{"id": "2r"}`))
+}
+
+func (qt QueryTests) RetrievesResultDetails() {
+	result, _ := qt.db.Query().Detailed().Sort("recent").Limit(2).Execute()
+	payloads := result.Payloads()
+	Expect(payloads[0]).To.Equal(JSON(`{"id": "1rd"}`))
+	Expect(payloads[1]).To.Equal(JSON(`{"id": "2rd"}`))
+}
+
 func (qt QueryTests) AppliesAnOffset() {
 	result, err := qt.db.Query().Sort("recent").Offset(2).Limit(2).Execute()
 	if err != nil {
@@ -67,6 +81,7 @@ func (qt QueryTests) UsesAListAsASet() {
 func (qt QueryTests) OneSet() {
 	result, _ := qt.db.Query().Sort("recent").And("1").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
+
 	assertResult(result, 2, 3)
 }
 

@@ -85,8 +85,8 @@ func (r *NormalResult) Release() {
 	r.query.release()
 }
 
-func (r *NormalResult) fill() (Result, error) {
-	if err := r.cache.Fill(r); err != nil {
+func (r *NormalResult) fill(detailed bool) (Result, error) {
+	if err := r.cache.Fill(r, detailed); err != nil {
 		r.Release()
 		return EmptyResult, err
 	}

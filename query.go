@@ -33,13 +33,14 @@ func (p QueryPool) Checkout() *Query {
 }
 
 type Query struct {
-	limit  int
-	offset int
-	sort   List
-	desc   bool
-	sets   *Sets
-	db     *Database
-	result *NormalResult
+	limit    int
+	offset   int
+	sort     List
+	desc     bool
+	detailed bool
+	sets     *Sets
+	db       *Database
+	result   *NormalResult
 }
 
 func (q *Query) Sort(name string) *Query {
@@ -81,6 +82,11 @@ func (q *Query) AndSet(set Set) *Query {
 
 func (q *Query) HasSort() bool {
 	return q.sort != nil
+}
+
+func (q *Query) Detailed() *Query {
+	q.detailed = true
+	return q
 }
 
 // Executes the query. After execution, the query object should not be used until
@@ -202,7 +208,7 @@ func (q *Query) execute(filter func(id Id) bool) (Result, error) {
 		}
 		return true
 	})
-	return q.result.fill()
+	return q.result.fill(q.detailed)
 }
 
 func (q *Query) setExecute(filter Filter) (Result, error) {
@@ -235,7 +241,7 @@ func (q *Query) setExecute(filter Filter) (Result, error) {
 			}
 		}
 	}
-	return q.result.fill()
+	return q.result.fill(q.detailed)
 }
 
 func (q *Query) setExecuteAdd(result *NormalResult, id Id) bool {
@@ -255,5 +261,6 @@ func (q *Query) release() {
 	q.limit = 50
 	q.sets.l = 0
 	q.desc = false
+	q.detailed = false
 	q.db.queries <- q
 }

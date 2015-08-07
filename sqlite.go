@@ -17,10 +17,10 @@ type batcher struct {
 	count int
 }
 
-func newBatcher(db *sql.DB, count int) (batcher, error) {
+func newBatcher(sql string, db *sql.DB, count int) (batcher, error) {
 	statements := make([]string, count)
 	for i := 0; i < count; i++ {
-		statements[i] = "select summary, ? as s from resources where id = ?"
+		statements[i] = sql
 	}
 
 	stmt, err := db.Prepare(strings.Join(statements, " union all "))
@@ -39,7 +39,8 @@ type SqliteStorage struct {
 	iResource *sql.Stmt
 	uResource *sql.Stmt
 	dResource *sql.Stmt
-	batchers  []batcher
+	sbatchers []batcher
+	dbatchers []batcher
 }
 
 func newSqliteStorage(path string) (*SqliteStorage, error) {
@@ -79,14 +80,22 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 	}
 
 	sizes := []int{25, 20, 15, 10, 5, 4, 3, 2, 1}
-	batchers := make([]batcher, len(sizes))
+	sbatchers := make([]batcher, len(sizes))
+	dbatchers := make([]batcher, len(sizes))
 	for i, size := range sizes {
-		batcher, err := newBatcher(db, size)
+		sbatcher, err := newBatcher("select summary, ? as s from resources where id = ?", db, size)
 		if err != nil {
 			db.Close()
 			return nil, err
 		}
-		batchers[i] = batcher
+		sbatchers[i] = sbatcher
+
+		dbatcher, err := newBatcher("select details, ? as s from resources where id = ?", db, size)
+		if err != nil {
+			db.Close()
+			return nil, err
+		}
+		dbatchers[i] = dbatcher
 	}
 
 	return &SqliteStorage{
@@ -98,7 +107,8 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 		iResource: iResource,
 		uResource: uResource,
 		dResource: dResource,
-		batchers:  batchers,
+		sbatchers: sbatchers,
+		dbatchers: dbatchers,
 	}, nil
 }
 
@@ -107,11 +117,17 @@ func (s *SqliteStorage) Get(id Id) (payload []byte, detailed bool) {
 	return payload, detailed
 }
 
-func (s *SqliteStorage) Fill(ids []interface{}, payloads [][]byte) error {
+func (s *SqliteStorage) Fill(ids []interface{}, payloads [][]byte, detailed bool) error {
 	l := len(ids) / 2
+
+	batchers := s.sbatchers
+	if detailed {
+		batchers = s.dbatchers
+	}
+
 	for true {
 		var batcher batcher
-		for _, batcher = range s.batchers {
+		for _, batcher = range batchers {
 			if batcher.count <= l {
 				break
 			}

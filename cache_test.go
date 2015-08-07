@@ -19,13 +19,27 @@ func (_ CacheTest) FetchesItems() {
 	result.add(1)
 	result.add(2)
 	result.add(4)
-	result.fill()
+	result.fill(false)
 
 	payloads := result.Payloads()
 	Expect(len(payloads)).To.Equal(3)
 	Expect(string(payloads[0])).To.Eql(`{"id": "1r"}`)
 	Expect(string(payloads[1])).To.Eql(`{"id": "2r"}`)
 	Expect(string(payloads[2])).To.Eql(`{"id": "4r"}`)
+}
+
+func (_ CacheTest) FetchesDetailedItems() {
+	_, result := buildCache(1024, time.Second*10)
+	result.add(1)
+	result.add(2)
+	result.add(4)
+	result.fill(true)
+
+	payloads := result.Payloads()
+	Expect(len(payloads)).To.Equal(3)
+	Expect(string(payloads[0])).To.Eql(`{"id": "1rd"}`)
+	Expect(string(payloads[1])).To.Eql(`{"id": "2rd"}`)
+	Expect(string(payloads[2])).To.Eql(`{"id": "4rd"}`)
 }
 
 func (_ CacheTest) GetsItemsFromCache() {
@@ -35,7 +49,7 @@ func (_ CacheTest) GetsItemsFromCache() {
 	cache.Set(4, []byte("44"), false)
 	result.add(2)
 	result.add(4)
-	result.fill()
+	result.fill(false)
 	payloads := result.Payloads()
 	Expect(len(payloads)).To.Equal(2)
 	Expect(payloads[0]).To.Eql("33")
@@ -47,7 +61,7 @@ func (_ CacheTest) MixesCachedAndUncachedResults() {
 	cache.Set(2, []byte("234"), false)
 	result.add(2)
 	result.add(10)
-	result.fill()
+	result.fill(false)
 	payloads := result.Payloads()
 	Expect(len(payloads)).To.Equal(2)
 	Expect(payloads[0]).To.Eql("234")
@@ -61,7 +75,7 @@ func (_ CacheTest) DoesntReturnExpiredItem() {
 	cache.Set(2, []byte("234"), false)
 	result.add(2)
 	result.add(9)
-	result.fill()
+	result.fill(false)
 	payloads := result.Payloads()
 	Expect(len(payloads)).To.Equal(2)
 	Expect(payloads[0]).To.Eql(`{"id": "2r"}`)
