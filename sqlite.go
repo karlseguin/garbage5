@@ -183,12 +183,18 @@ func (s *SqliteStorage) LoadIds(newOnly bool) (map[string]Id, error) {
 	var count int
 	err := s.DB.QueryRow("select count(*) from resources").Scan(&count)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
 	var payload []byte
 	err = s.DB.QueryRow("select payload from indexes where id = 'ids'").Scan(&payload)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return extractIdMap(payload, count), nil
