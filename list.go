@@ -1,8 +1,6 @@
 package indexes
 
-import (
-	"sync"
-)
+import "sync"
 
 type List interface {
 	Set
@@ -42,6 +40,26 @@ func (l *RankedList) Each(desc bool, fn func(id Id) bool) {
 	for i := len(l.ids) - 1; i != -1; i-- {
 		if fn(l.ids[i]) == false {
 			return
+		}
+	}
+}
+
+func (s RankedList) Around(target Id, fn func(Id) bool) {
+	index := s.rank[target]
+	l := len(s.ids)
+	decr, incr := index-1, index+1
+	for incr < l || decr >= 0 {
+		if incr < l {
+			if fn(s.ids[incr]) == false {
+				return
+			}
+			incr++
+		}
+		if decr >= 0 {
+			if fn(s.ids[decr]) == false {
+				return
+			}
+			decr--
 		}
 	}
 }
@@ -101,6 +119,10 @@ func (s SimpleList) Each(desc bool, fn func(Id) bool) {
 			return
 		}
 	}
+}
+
+func (s SimpleList) Around(target Id, fn func(Id) bool) {
+	s.Each(false, fn)
 }
 
 func (s SimpleList) CanRank() bool {

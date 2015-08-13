@@ -38,6 +38,30 @@ func (qt QueryTests) LimitsNumberOfResults() {
 	assertResult(result, 1, 2, 3)
 }
 
+func (qt QueryTests) ReturnsResultsAroundAnother() {
+	result, _ := qt.db.Query().Sort("recent").Around(7).Limit(5).Execute()
+	Expect(result.HasMore()).To.Equal(true)
+	assertResult(result, 8, 6, 9, 5, 10)
+}
+
+func (qt QueryTests) ReturnsResultsAroundAtTheHead() {
+	result, _ := qt.db.Query().Sort("recent").Around(2).Limit(5).Execute()
+	Expect(result.HasMore()).To.Equal(true)
+	assertResult(result, 3, 1, 4, 5, 6)
+}
+
+func (qt QueryTests) ReturnsResultsAroundAtTheTail() {
+	result, _ := qt.db.Query().Sort("recent").Around(14).Limit(5).Execute()
+	Expect(result.HasMore()).To.Equal(true)
+	assertResult(result, 15, 13, 12, 11, 10)
+}
+
+func (qt QueryTests) ReturnsResultsAroundFiltered() {
+	result, _ := qt.db.Query().Sort("recent").And("7").Around(7).Limit(5).Execute()
+	Expect(result.HasMore()).To.Equal(false)
+	assertResult(result, 5, 10, 2)
+}
+
 func (qt QueryTests) RetrievesResultSummary() {
 	result, _ := qt.db.Query().Sort("recent").Limit(2).Execute()
 	payloads := result.Payloads()
@@ -81,7 +105,6 @@ func (qt QueryTests) UsesAListAsASet() {
 func (qt QueryTests) OneSet() {
 	result, _ := qt.db.Query().Sort("recent").And("1").Limit(2).Execute()
 	Expect(result.HasMore()).To.Equal(true)
-
 	assertResult(result, 2, 3)
 }
 

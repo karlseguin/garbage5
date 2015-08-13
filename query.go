@@ -34,6 +34,7 @@ func (p QueryPool) Checkout() *Query {
 
 type Query struct {
 	limit    int
+	around   Id
 	offset   int
 	sort     List
 	desc     bool
@@ -67,6 +68,11 @@ func (q *Query) Limit(limit int) *Query {
 
 func (q *Query) Desc() *Query {
 	q.desc = true
+	return q
+}
+
+func (q *Query) Around(id Id) *Query {
+	q.around = id
 	return q
 }
 
@@ -128,7 +134,8 @@ func (q *Query) Execute() (Result, error) {
 
 	q.sort.RLock()
 	defer q.sort.RUnlock()
-	if sl < SmallSetTreshold && q.sort.Len() > 1000 && q.sort.CanRank() {
+
+	if sl < SmallSetTreshold && q.sort.Len() > 1000 && q.sort.CanRank() && q.around == 0 {
 		return q.setExecute(q.getFilter(l, 1))
 	}
 	return q.execute(q.getFilter(l, 0))
@@ -192,23 +199,33 @@ func (q *Query) multiSetsFilter(start int) Filter {
 
 //TODO: if len(q.sets) == 0, we could skip directly to the offset....
 func (q *Query) execute(filter func(id Id) bool) (Result, error) {
-	q.sort.Each(q.desc, func(id Id) bool {
-		if filter(id) == false {
-			return true
-		}
-		if q.offset > 0 {
-			q.offset--
-		} else {
-			if q.limit == 0 {
-				q.result.more = true
-				return false
-			}
-			q.result.add(id)
-			q.limit--
-		}
-		return true
-	})
+	if q.around != 0 {
+		q.sort.Around(q.around, func(id Id) bool {
+			return q.executeOne(filter, id)
+		})
+	} else {
+		q.sort.Each(q.desc, func(id Id) bool {
+			return q.executeOne(filter, id)
+		})
+	}
 	return q.result.fill(q.detailed)
+}
+
+func (q *Query) executeOne(filter func(id Id) bool, id Id) bool {
+	if filter(id) == false {
+		return true
+	}
+	if q.offset > 0 {
+		q.offset--
+	} else {
+		if q.limit == 0 {
+			q.result.more = true
+			return false
+		}
+		q.result.add(id)
+		q.limit--
+	}
+	return true
 }
 
 func (q *Query) setExecute(filter Filter) (Result, error) {
@@ -258,6 +275,7 @@ func (q *Query) setExecuteAdd(result *NormalResult, id Id) bool {
 func (q *Query) release() {
 	q.sort = nil
 	q.offset = 0
+	q.around = 0
 	q.limit = 50
 	q.sets.l = 0
 	q.desc = false

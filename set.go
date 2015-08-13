@@ -20,6 +20,7 @@ type Set interface {
 	Each(bool, func(Id) bool)
 	CanRank() bool
 	Rank(id Id) (int, bool)
+	Around(id Id, f func(id Id) bool)
 }
 
 type Sets struct {
@@ -94,6 +95,11 @@ func (s *FixedSet) Each(desc bool, fn func(Id) bool) {
 	})
 }
 
+// cannot be done
+func (s *FixedSet) Around(id Id, fn func(Id) bool) {
+	s.Each(false, fn)
+}
+
 func (s *FixedSet) CanRank() bool {
 	return false
 }
@@ -130,6 +136,10 @@ func (s *emptySet) Exists(value Id) bool {
 }
 
 func (s *emptySet) Each(desc bool, fn func(Id) bool) {
+
+}
+
+func (s *emptySet) Around(id Id, fn func(Id) bool) {
 
 }
 
