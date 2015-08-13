@@ -26,7 +26,7 @@ type Storage interface {
 	ClearNew() error
 	UpsertSet(id string, payload []byte) ([]Id, error)
 	UpsertList(id string, payload []byte) ([]Id, error)
-	UpsertResource(id Id, eid string, summary []byte, details []byte) error
+	UpsertResource(id Id, summary []byte, details []byte) error
 	RemoveSet(id string) error
 	RemoveList(id string) error
 	RemoveResource(id Id) error
@@ -179,8 +179,8 @@ func (db *Database) RemoveList(name string) error {
 	return nil
 }
 
-func (db *Database) UpdateResource(id Id, eid string, summary []byte, details []byte) error {
-	if err := db.storage.UpsertResource(id, eid, summary, details); err != nil {
+func (db *Database) UpdateResource(id Id, summary []byte, details []byte) error {
+	if err := db.storage.UpsertResource(id, summary, details); err != nil {
 		return err
 	}
 	db.cache.Set(id, summary, false)

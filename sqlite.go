@@ -66,11 +66,11 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 		return nil, err
 	}
 
-	iResource, err := db.Prepare("insert into resources (summary, details, eid, id) values (?, ?, ?, ?)")
+	iResource, err := db.Prepare("insert into resources (summary, details, id) values (?, ?, ?)")
 	if err != nil {
 		return nil, err
 	}
-	uResource, err := db.Prepare("update resources set summary = ?, details = ?, eid = ? where id = ?")
+	uResource, err := db.Prepare("update resources set summary = ?, details = ? where id = ?")
 	if err != nil {
 		return nil, err
 	}
@@ -239,8 +239,8 @@ func (s *SqliteStorage) UpsertList(id string, payload []byte) ([]Id, error) {
 	return s.upsertIndex(id, 3, payload)
 }
 
-func (s *SqliteStorage) UpsertResource(id Id, eid string, summary []byte, details []byte) error {
-	return s.upsert(s.iResource, s.uResource, summary, details, eid, id)
+func (s *SqliteStorage) UpsertResource(id Id, summary []byte, details []byte) error {
+	return s.upsert(s.iResource, s.uResource, summary, details, id)
 }
 
 func (s *SqliteStorage) RemoveList(id string) error {
