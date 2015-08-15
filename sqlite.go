@@ -152,17 +152,17 @@ func (s *SqliteStorage) Fill(ids []interface{}, payloads [][]byte, detailed bool
 	return nil
 }
 
-func (s *SqliteStorage) LoadNResources(n int) (map[Id][]byte, error) {
-	m := make(map[Id][]byte, n)
-	rows, err := s.DB.Query("select id, summary from resources order by id desc limit ?", n)
+func (s *SqliteStorage) LoadNResources(n int) (map[Id][][]byte, error) {
+	m := make(map[Id][][]byte, n)
+	rows, err := s.DB.Query("select id, summary, details from resources order by id desc limit ?", n)
 	if err != nil {
 		return nil, err
 	}
 	for rows.Next() {
 		var id int
-		var summary []byte
-		rows.Scan(&id, &summary)
-		m[Id(id)] = summary
+		var summary, details []byte
+		rows.Scan(&id, &summary, &details)
+		m[Id(id)] = [][]byte{summary, details}
 	}
 	return m, nil
 }

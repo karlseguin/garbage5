@@ -20,7 +20,7 @@ var (
 )
 
 type Fetcher interface {
-	LoadNResources(n int) (map[Id][]byte, error)
+	LoadNResources(n int) (map[Id][][]byte, error)
 	Fill([]interface{}, [][]byte, bool) error
 	Get(id Id) ([]byte, bool)
 }
@@ -56,12 +56,19 @@ func newCache(fetcher Fetcher, configuration *Configuration) (*Cache, error) {
 			lookup: make(map[Id]*Item),
 		}
 	}
-	values, err := fetcher.LoadNResources(configuration.cachePreload)
-	if err != nil {
-		return nil, err
-	}
-	for id, payload := range values {
-		cache.Set(id, payload, false)
+	if configuration.cachePreload > 0 {
+		values, err := fetcher.LoadNResources(configuration.cachePreload)
+		if err != nil {
+			return nil, err
+		}
+		for id, payload := range values {
+			cache.Set(id, payload[0], false)
+			if payload[1] == nil {
+				cache.bucket(id, true).set(id, summaryRef)
+			} else {
+				cache.Set(id, payload[1], true)
+			}
+		}
 	}
 	return cache, nil
 }
