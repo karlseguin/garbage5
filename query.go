@@ -135,7 +135,7 @@ func (q *Query) Execute() (Result, error) {
 	q.sort.RLock()
 	defer q.sort.RUnlock()
 
-	if sl < SmallSetTreshold && q.sort.Len() > 1000 && q.sort.CanRank() && q.around == 0 {
+	if sl < SmallSetTreshold && q.sort.Len() > 1000 && q.sort.CanRank() {
 		return q.setExecute(q.getFilter(l, 1))
 	}
 	return q.execute(q.getFilter(l, 0))
@@ -239,13 +239,33 @@ func (q *Query) setExecute(filter Filter) (Result, error) {
 		}
 		return true
 	})
-	ranks := q.result.ranked[:q.result.length]
-	sort.Sort(ranks)
-	//result.length is shared with unsorted and sorted results
-	//which is safe since one is always calculated after the other
+	l := q.result.length
 	q.result.length = 0
+	ranks := q.result.ranked[:l]
+	sort.Sort(ranks)
 
-	if q.desc {
+	if q.around != 0 {
+		if aroundRank, exists := q.sort.Rank(q.around); exists {
+			idx := sort.Search(l, func(i int) bool {
+				return ranks[i].rank >= aroundRank
+			})
+			decr, incr := idx-1, idx+1
+			for incr < l || decr >= 0 {
+				if incr < l {
+					if q.setExecuteAdd(q.result, ranks[incr].id) == false {
+						break
+					}
+					incr++
+				}
+				if decr >= 0 {
+					if q.setExecuteAdd(q.result, ranks[decr].id) == false {
+						break
+					}
+					decr--
+				}
+			}
+		}
+	} else if q.desc {
 		for i := len(ranks) - q.offset - 1; i > -1; i-- {
 			if q.setExecuteAdd(q.result, ranks[i].id) == false {
 				break

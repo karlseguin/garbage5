@@ -156,6 +156,12 @@ func (qt QueryTests) SetBasedDesc() {
 	assertResult(result, 14, 13)
 }
 
+func (qt QueryTests) SetBasedAround() {
+	result, _ := qt.db.Query().Around(8).Sort("large").And("1").And("2").Limit(5).Execute()
+	Expect(result.HasMore()).To.Equal(true)
+	assertResult(result, 9, 7, 10, 6, 11)
+}
+
 func (qt QueryTests) SetBasedDescNoMore() {
 	result, _ := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Offset(11).Desc().Execute()
 	Expect(result.HasMore()).To.Equal(false)
