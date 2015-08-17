@@ -39,7 +39,7 @@ type NormalResult struct {
 	query    *Query
 	cache    *Cache
 	payloads [][]byte
-	miss     BatchMiss
+	miss     []interface{}
 }
 
 func newResult(cache *Cache, maxSets int, maxResults int) *NormalResult {
@@ -48,11 +48,7 @@ func newResult(cache *Cache, maxSets int, maxResults int) *NormalResult {
 		ids:      make([]Id, maxResults),
 		payloads: make([][]byte, maxResults),
 		ranked:   make(Ranks, SmallSetTreshold),
-		miss: BatchMiss{
-			ids:     make([]Id, maxResults),
-			indexes: make([]int, maxResults),
-			params:  make([]interface{}, maxResults),
-		},
+		miss:     make([]interface{}, maxResults),
 	}
 	return result
 }

@@ -3,7 +3,6 @@ package indexes
 import (
 	"database/sql"
 	"encoding/binary"
-	"errors"
 	"strings"
 
 	_ "gopkg.in/mattn/go-sqlite3.v1"
@@ -119,13 +118,13 @@ func (s *SqliteStorage) Get(id Id) (payload []byte, detailed bool) {
 	return payload, detailed
 }
 
-func (s *SqliteStorage) Fill(miss BatchMiss, count int, payloads [][]byte, detailed bool) error {
+func (s *SqliteStorage) Fill(params []interface{}, index map[Id]int, payloads [][]byte, detailed bool) error {
 	batcher := s.summaryBatcher
 	if detailed {
 		batcher = s.detailsBatcher
 	}
 
-	query := batcher.For(miss.params[:count])
+	query := batcher.For(params)
 
 	for query.HasMore() {
 		rows, err := query.Query()
@@ -136,26 +135,7 @@ func (s *SqliteStorage) Fill(miss BatchMiss, count int, payloads [][]byte, detai
 			var id Id
 			var payload []byte
 			rows.Scan(&id, &payload)
-
-			index := -1
-			for i, x := range miss.ids {
-				if x == id {
-					index = i
-					break
-				}
-			}
-			if index == -1 {
-				rows.Close()
-				return errors.New("failed to find query index")
-			}
-
-			payloads[miss.indexes[index]] = payload
-
-			count--
-			miss.ids[index] = miss.ids[count]
-			miss.indexes[index] = miss.indexes[count]
-			miss.ids = miss.ids[:count]
-			miss.indexes = miss.indexes[:count]
+			payloads[index[id]] = payload
 		}
 		rows.Close()
 	}
