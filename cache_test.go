@@ -127,7 +127,7 @@ func (f nilFetcher) LoadNResources(n int) (map[Id][][]byte, error) {
 	return nil, nil
 }
 
-func (f nilFetcher) Fill([]interface{}, [][]byte, bool) error {
+func (f nilFetcher) Fill(BatchMiss, int, [][]byte, bool) error {
 	return nil
 }
 

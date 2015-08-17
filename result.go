@@ -33,13 +33,13 @@ func (r Ranks) Swap(i, j int) {
 
 type NormalResult struct {
 	length   int
+	ids      []Id
 	more     bool
 	ranked   Ranks
 	query    *Query
-	ids      []Id
-	misses   []interface{}
-	payloads [][]byte
 	cache    *Cache
+	payloads [][]byte
+	miss     BatchMiss
 }
 
 func newResult(cache *Cache, maxSets int, maxResults int) *NormalResult {
@@ -48,7 +48,11 @@ func newResult(cache *Cache, maxSets int, maxResults int) *NormalResult {
 		ids:      make([]Id, maxResults),
 		payloads: make([][]byte, maxResults),
 		ranked:   make(Ranks, SmallSetTreshold),
-		misses:   make([]interface{}, maxResults*2),
+		miss: BatchMiss{
+			ids:     make([]Id, maxResults),
+			indexes: make([]int, maxResults),
+			params:  make([]interface{}, maxResults),
+		},
 	}
 	return result
 }

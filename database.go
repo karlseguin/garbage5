@@ -17,7 +17,7 @@ type Storage interface {
 	Close() error
 	ListCount() uint32
 	SetCount() uint32
-	Fill(miss []interface{}, payloads [][]byte, detailed bool) error
+	Fill(miss BatchMiss, missCount int, payloads [][]byte, detailed bool) error
 	Get(id Id) ([]byte, bool)
 	LoadNResources(n int) (map[Id][][]byte, error)
 	LoadIds(newOnly bool) (map[string]Id, error)

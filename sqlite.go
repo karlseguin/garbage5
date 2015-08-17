@@ -3,6 +3,7 @@ package indexes
 import (
 	"database/sql"
 	"encoding/binary"
+	"errors"
 	"strings"
 
 	_ "gopkg.in/mattn/go-sqlite3.v1"
@@ -32,15 +33,15 @@ func newBatcher(sql string, db *sql.DB, count int) (batcher, error) {
 
 type SqliteStorage struct {
 	*sql.DB
-	get       *sql.Stmt
-	iIndex    *sql.Stmt
-	uIndex    *sql.Stmt
-	dIndex    *sql.Stmt
-	iResource *sql.Stmt
-	uResource *sql.Stmt
-	dResource *sql.Stmt
-	sbatchers []batcher
-	dbatchers []batcher
+	get            *sql.Stmt
+	iIndex         *sql.Stmt
+	uIndex         *sql.Stmt
+	dIndex         *sql.Stmt
+	iResource      *sql.Stmt
+	uResource      *sql.Stmt
+	dResource      *sql.Stmt
+	summaryBatcher Batcher
+	detailsBatcher Batcher
 }
 
 func newSqliteStorage(path string) (*SqliteStorage, error) {
@@ -51,64 +52,65 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 
 	get, err := db.Prepare("select ifnull(details, summary) d, case when details is null then 0 else 1 end as detailed from resources where id = ?")
 	if err != nil {
+		db.Close()
 		return nil, err
 	}
 	iIndex, err := db.Prepare("insert into indexes (type, payload, id) values (?, ?, ?)")
 	if err != nil {
+		db.Close()
 		return nil, err
 	}
 	uIndex, err := db.Prepare("update indexes set type = ?, payload = ? where id = ?")
 	if err != nil {
+		db.Close()
 		return nil, err
 	}
 	dIndex, err := db.Prepare("delete from indexes where id = ?")
 	if err != nil {
+		db.Close()
 		return nil, err
 	}
 
 	iResource, err := db.Prepare("insert into resources (summary, details, id) values (?, ?, ?)")
 	if err != nil {
+		db.Close()
 		return nil, err
 	}
 	uResource, err := db.Prepare("update resources set summary = ?, details = ? where id = ?")
 	if err != nil {
+		db.Close()
 		return nil, err
 	}
 	dResource, err := db.Prepare("delete from resources where id = ?")
 	if err != nil {
+		db.Close()
 		return nil, err
 	}
 
 	sizes := []int{25, 20, 15, 10, 5, 4, 3, 2, 1}
-	sbatchers := make([]batcher, len(sizes))
-	dbatchers := make([]batcher, len(sizes))
-	for i, size := range sizes {
-		sbatcher, err := newBatcher("select summary, ? as s from resources where id = ?", db, size)
-		if err != nil {
-			db.Close()
-			return nil, err
-		}
-		sbatchers[i] = sbatcher
+	summaryBatcher, err := NewBatcher(db, "select id, summary from resources where id in #IN#", sizes...)
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
 
-		dbatcher, err := newBatcher("select details, ? as s from resources where id = ?", db, size)
-		if err != nil {
-			db.Close()
-			return nil, err
-		}
-		dbatchers[i] = dbatcher
+	detailsBatcher, err := NewBatcher(db, "select id, details from resources where id in #IN#", sizes...)
+	if err != nil {
+		db.Close()
+		return nil, err
 	}
 
 	return &SqliteStorage{
-		DB:        db,
-		get:       get,
-		iIndex:    iIndex,
-		uIndex:    uIndex,
-		dIndex:    dIndex,
-		iResource: iResource,
-		uResource: uResource,
-		dResource: dResource,
-		sbatchers: sbatchers,
-		dbatchers: dbatchers,
+		DB:             db,
+		get:            get,
+		iIndex:         iIndex,
+		uIndex:         uIndex,
+		dIndex:         dIndex,
+		iResource:      iResource,
+		uResource:      uResource,
+		dResource:      dResource,
+		summaryBatcher: summaryBatcher,
+		detailsBatcher: detailsBatcher,
 	}, nil
 }
 
@@ -117,37 +119,45 @@ func (s *SqliteStorage) Get(id Id) (payload []byte, detailed bool) {
 	return payload, detailed
 }
 
-func (s *SqliteStorage) Fill(ids []interface{}, payloads [][]byte, detailed bool) error {
-	l := len(ids) / 2
-
-	batchers := s.sbatchers
+func (s *SqliteStorage) Fill(miss BatchMiss, count int, payloads [][]byte, detailed bool) error {
+	batcher := s.summaryBatcher
 	if detailed {
-		batchers = s.dbatchers
+		batcher = s.detailsBatcher
 	}
 
-	for true {
-		var batcher batcher
-		for _, batcher = range batchers {
-			if batcher.count <= l {
-				break
-			}
-		}
-		count := batcher.count * 2
-		rows, err := batcher.Query(ids[:count]...)
+	query := batcher.For(miss.params[:count])
+
+	for query.HasMore() {
+		rows, err := query.Query()
 		if err != nil {
 			return err
 		}
 		for rows.Next() {
-			var index int
-			var summary []byte
-			rows.Scan(&summary, &index)
-			payloads[index] = summary
+			var id Id
+			var payload []byte
+			rows.Scan(&id, &payload)
+
+			index := -1
+			for i, x := range miss.ids {
+				if x == id {
+					index = i
+					break
+				}
+			}
+			if index == -1 {
+				rows.Close()
+				return errors.New("failed to find query index")
+			}
+
+			payloads[miss.indexes[index]] = payload
+
+			count--
+			miss.ids[index] = miss.ids[count]
+			miss.indexes[index] = miss.indexes[count]
+			miss.ids = miss.ids[:count]
+			miss.indexes = miss.indexes[:count]
 		}
 		rows.Close()
-		if l -= batcher.count; l == 0 {
-			break
-		}
-		ids = ids[count:]
 	}
 	return nil
 }
