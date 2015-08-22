@@ -27,7 +27,7 @@ func MustBatcher(conn *sql.DB, query string, sizes ...int) Batcher {
 
 func NewBatcher(conn *sql.DB, query string, sizes ...int) (Batcher, error) {
 	l := len(sizes)
-	sort.Reverse(sort.IntSlice(sizes))
+	sort.Sort(sort.Reverse(sort.IntSlice(sizes)))
 	if l == 0 || sizes[l-1] != 1 {
 		sizes = append(sizes, 1)
 		l++

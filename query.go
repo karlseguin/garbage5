@@ -28,8 +28,7 @@ func NewQueryPool(db *Database, maxSets int, maxResults int) QueryPool {
 }
 
 func (p QueryPool) Checkout() *Query {
-	q := <-p
-	return q
+	return <-p
 }
 
 type Query struct {
@@ -112,7 +111,6 @@ func (q *Query) Execute() (Result, error) {
 			q.result.Release()
 			return EmptyResult, nil
 		}
-
 		q.sort = q.sets.Shift()
 	}
 

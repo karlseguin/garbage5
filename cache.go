@@ -89,9 +89,9 @@ func (c *Cache) Fill(result *NormalResult, detailed bool) error {
 			payloads[i] = resource
 		}
 	}
-	if missCount > 0 {
 
-		if err := c.fetcher.Fill(miss, indexMap, payloads, detailed); err != nil {
+	if missCount > 0 {
+		if err := c.fetcher.Fill(miss[:missCount], indexMap, payloads, detailed); err != nil {
 			return err
 		}
 		for id, index := range indexMap {
