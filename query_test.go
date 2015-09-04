@@ -144,7 +144,7 @@ func (qt QueryTests) TwoSetBasedFind() {
 	assertResult(result, 3, 4)
 }
 
-func (qt QueryTests) Broken() {
+func (qt QueryTests) OneListOneSet() {
 	result, _ := qt.db.Query().Sort("large").And("other").And("1").Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	assertResult(result, 10, 12)

@@ -230,7 +230,7 @@ func (q *Query) setExecute(filter Filter) (Result, error) {
 	set := q.sets.s[0]
 	set.Each(true, func(id Id) bool {
 		if filter(id) == false {
-			return false
+			return true
 		}
 		if rank, ok := q.sort.Rank(id); ok {
 			q.result.addranked(id, rank)
