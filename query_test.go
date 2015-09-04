@@ -144,6 +144,12 @@ func (qt QueryTests) TwoSetBasedFind() {
 	assertResult(result, 3, 4)
 }
 
+func (qt QueryTests) Broken() {
+	result, _ := qt.db.Query().Sort("large").And("other").And("1").Execute()
+	Expect(result.HasMore()).To.Equal(false)
+	assertResult(result, 10, 12)
+}
+
 func (qt QueryTests) SetBasedNoMore() {
 	result, _ := qt.db.Query().Sort("large").And("1").And("2").Limit(2).Offset(11).Execute()
 	Expect(result.HasMore()).To.Equal(false)

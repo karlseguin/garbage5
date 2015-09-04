@@ -26,6 +26,7 @@ ids.each_index do |index|
   db.execute('insert into resources (id, eid, summary, details) values (?, ?, ?, ?)', [index+1, eid, "{\"id\": \"#{eid}\"}", "{\"id\": \"#{eid}d\"}"])
 end
 db.execute('insert into indexes (id, payload, type) values (?, ?, ?)', ['recent', indexes.pack('V*'), 3])
+db.execute('insert into indexes (id, payload, type) values (?, ?, ?)', ['other', [10,5000,12].pack('V*'), 3])
 db.execute('insert into indexes (id, payload, type) values (?, ?, ?)', ['ids', map, 1])
 
 indexes = []
@@ -42,7 +43,7 @@ sets = {
   '4' => ['5r', '6r', '7r', '8r', '9r', '10r', '11r', '12r', '13r', '14r', '15r'],
   '5' => ['6r', '7r', '8r', '9r', '10r', '11r', '12r', '13r', '14r', '15r'],
   '6' => ['1r'],
-  '7' => ['7r', '10r', '5r', '2r']
+  '7' => ['7r', '10r', '5r', '2r'],
 }
 
 nameId = 1
