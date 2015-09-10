@@ -17,8 +17,8 @@ type Storage interface {
 	Close() error
 	ListCount() uint32
 	SetCount() uint32
-	Fill(params []interface{}, index map[Id]int, payloads [][]byte, detailed bool) error
-	Get(id Id) ([]byte, bool)
+	Fill(params []interface{}, index map[Id]int, payloads [][]byte, types []string, detailed bool) error
+	Get(id Id, tpe string) ([]byte, bool)
 	LoadNResources(n int) (map[Id][][]byte, error)
 	LoadIds(newOnly bool) (map[string]Id, error)
 	EachSet(newOnly bool, f func(name string, ids []Id)) error
@@ -26,7 +26,7 @@ type Storage interface {
 	ClearNew() error
 	UpsertSet(id string, payload []byte) ([]Id, error)
 	UpsertList(id string, payload []byte) ([]Id, error)
-	UpsertResource(id Id, summary []byte, details []byte) error
+	UpsertResource(id Id, summary []byte, details []byte, tpe string) error
 	RemoveSet(id string) error
 	RemoveList(id string) error
 	RemoveResource(id Id) error
@@ -103,18 +103,18 @@ func (db *Database) GetSet(name string) Set {
 	return s
 }
 
-func (db *Database) Get(id string) []byte {
+func (db *Database) Get(id string, tpe string) []byte {
 	db.idLock.RLock()
 	iid, exists := db.ids[id]
 	db.idLock.RUnlock()
 	if exists == false {
 		return nil
 	}
-	return db.GetInternal(iid)
+	return db.GetInternal(iid, tpe)
 }
 
-func (db *Database) GetInternal(iid Id) []byte {
-	return db.cache.Fetch(iid)
+func (db *Database) GetInternal(iid Id, tpe string) []byte {
+	return db.cache.Fetch(iid, tpe)
 }
 
 func (db *Database) QueryIds(ids ...string) *Query {
@@ -179,12 +179,10 @@ func (db *Database) RemoveList(name string) error {
 	return nil
 }
 
-func (db *Database) UpdateResource(id Id, summary []byte, details []byte) error {
-	if err := db.storage.UpsertResource(id, summary, details); err != nil {
+func (db *Database) UpdateResource(id Id, summary []byte, details []byte, tpe string) error {
+	if err := db.storage.UpsertResource(id, summary, details, tpe); err != nil {
 		return err
 	}
-	db.cache.Set(id, summary, false)
-	db.cache.Set(id, details, true)
 	return nil
 }
 

@@ -23,9 +23,26 @@ func (_ CacheTest) FetchesItems() {
 
 	payloads := result.Payloads()
 	Expect(len(payloads)).To.Equal(3)
-	Expect(string(payloads[0])).To.Eql(`{"id": "1r"}`)
-	Expect(string(payloads[1])).To.Eql(`{"id": "2r"}`)
-	Expect(string(payloads[2])).To.Eql(`{"id": "4r"}`)
+	Expect(payloads[0]).To.Eql(`{"id": "1r"}`)
+	Expect(payloads[1]).To.Eql(`{"id": "2r"}`)
+	Expect(payloads[2]).To.Eql(`{"id": "4r"}`)
+}
+
+func (_ CacheTest) FetchFromFillFollowsType() {
+	cache, result := buildCache(1024, time.Second*10, 0)
+	result.add(1)
+	result.add(2)
+	result.add(4)
+	result.fill(true)
+	cache.fetcher = nil
+
+	Expect(cache.Fetch(1, "user")).To.Eql(`{"id": "1rd"}`)
+	Expect(cache.Fetch(1, "page")).To.Equal(nil)
+	Expect(cache.Fetch(2, "user")).To.Equal(nil)
+	Expect(cache.Fetch(2, "page")).To.Eql(`{"id": "2rd"}`)
+	Expect(cache.Fetch(4, "user")).To.Equal(nil)
+	Expect(cache.Fetch(4, "page")).To.Eql(`{"id": "4rd"}`)
+
 }
 
 func (_ CacheTest) FetchesDetailedItems() {
@@ -37,16 +54,16 @@ func (_ CacheTest) FetchesDetailedItems() {
 
 	payloads := result.Payloads()
 	Expect(len(payloads)).To.Equal(3)
-	Expect(string(payloads[0])).To.Eql(`{"id": "1rd"}`)
-	Expect(string(payloads[1])).To.Eql(`{"id": "2rd"}`)
-	Expect(string(payloads[2])).To.Eql(`{"id": "4rd"}`)
+	Expect(payloads[0]).To.Eql(`{"id": "1rd"}`)
+	Expect(payloads[1]).To.Eql(`{"id": "2rd"}`)
+	Expect(payloads[2]).To.Eql(`{"id": "4rd"}`)
 }
 
 func (_ CacheTest) GetsItemsFromCache() {
 	cache, result := buildCache(1024, time.Second*10, 0)
 	cache.fetcher = nil
-	cache.Set(2, []byte("33"), false)
-	cache.Set(4, []byte("44"), false)
+	cache.set(2, Value{1, []byte("33")}, false)
+	cache.set(4, Value{1, []byte("44")}, false)
 	result.add(2)
 	result.add(4)
 	result.fill(false)
@@ -58,7 +75,7 @@ func (_ CacheTest) GetsItemsFromCache() {
 
 func (_ CacheTest) MixesCachedAndUncachedResults() {
 	cache, result := buildCache(1024, time.Second*10, 0)
-	cache.Set(2, []byte("234"), false)
+	cache.set(2, Value{1, []byte("234")}, false)
 	result.add(2)
 	result.add(10)
 	result.fill(false)
@@ -67,12 +84,12 @@ func (_ CacheTest) MixesCachedAndUncachedResults() {
 	Expect(payloads[0]).To.Eql("234")
 	Expect(payloads[1]).To.Eql(`{"id": "10r"}`)
 
-	Expect(cache.bucket(10, false).get(10).value).To.Eql(`{"id": "10r"}`)
+	Expect(cache.bucket(10, false).get(10).Value.payload).To.Eql(`{"id": "10r"}`)
 }
 
 func (_ CacheTest) DoesntReturnExpiredItem() {
 	cache, result := buildCache(1024, time.Second*-10, 0)
-	cache.Set(2, []byte("234"), false)
+	cache.set(2, Value{1, []byte("234")}, false)
 	result.add(2)
 	result.add(9)
 	result.fill(false)
@@ -84,27 +101,37 @@ func (_ CacheTest) DoesntReturnExpiredItem() {
 
 func (_ CacheTest) Fetch() {
 	cache, _ := buildCache(1024, time.Second*10, 0)
-	Expect(cache.Fetch(2)).To.Eql(`{"id": "2rd"}`)
-	Expect(cache.Fetch(2)).To.Eql(`{"id": "2rd"}`)
+	Expect(cache.Fetch(2, "page")).To.Eql(`{"id": "2rd"}`)
+	Expect(cache.Fetch(2, "page")).To.Eql(`{"id": "2rd"}`)
+}
+
+func (_ CacheTest) FetchMatchestype() {
+	cache, _ := buildCache(1024, time.Second*10, 0)
+	Expect(cache.Fetch(2, "user")).To.Equal(nil)
 }
 
 func (_ CacheTest) FetchFallsBackToSummary() {
 	cache, _ := buildCache(1024, time.Second*10, 0)
-	Expect(cache.Fetch(9999999)).To.Eql(`{"id": "9999999x"}`)
-	Expect(cache.Fetch(9999999)).To.Eql(`{"id": "9999999x"}`)
+	Expect(cache.Fetch(9999999, "user")).To.Eql(`{"id": "9999999x"}`)
+	Expect(cache.Fetch(9999999, "user")).To.Eql(`{"id": "9999999x"}`)
 }
 
-func (_ CacheTest) PreloadsTheCacheWithSummeries() {
+func (_ CacheTest) FetchFallbackMatchestype() {
+	cache, _ := buildCache(1024, time.Second*10, 0)
+	Expect(cache.Fetch(9999999, "page")).To.Equal(nil)
+}
+
+func (_ CacheTest) PreloadsTheCacheWithSummaries() {
 	cache, _ := buildCache(1024, time.Second*10, 100)
 	cache.fetcher = nilFetcher{}
-	Expect(cache.Fetch(9999999)).To.Eql(`{"id": "9999999x"}`)
-	Expect(cache.Fetch(9999999)).To.Eql(`{"id": "9999999x"}`)
+	Expect(cache.Fetch(9999999, "user")).To.Eql(`{"id": "9999999x"}`)
+	Expect(cache.Fetch(9999999, "user")).To.Eql(`{"id": "9999999x"}`)
 }
 
 func (_ CacheTest) PreloadsTheCacheWithDetails() {
 	cache, _ := buildCache(1024, time.Second*10, 100)
 	cache.fetcher = nilFetcher{}
-	Expect(cache.Fetch(2)).To.Eql(`{"id": "2rd"}`)
+	Expect(cache.Fetch(2, "page")).To.Eql(`{"id": "2rd"}`)
 }
 
 func buildCache(size uint64, ttl time.Duration, preload int) (*Cache, *NormalResult) {
@@ -127,10 +154,10 @@ func (f nilFetcher) LoadNResources(n int) (map[Id][][]byte, error) {
 	return nil, nil
 }
 
-func (f nilFetcher) Fill([]interface{}, map[Id]int, [][]byte, bool) error {
+func (f nilFetcher) Fill([]interface{}, map[Id]int, [][]byte, []string, bool) error {
 	return nil
 }
 
-func (f nilFetcher) Get(id Id) ([]byte, bool) {
+func (f nilFetcher) Get(id Id, tpe string) ([]byte, bool) {
 	return nil, false
 }

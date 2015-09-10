@@ -48,8 +48,7 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	get, err := db.Prepare("select ifnull(details, summary) d, case when details is null then 0 else 1 end as detailed from resources where id = ?")
+	get, err := db.Prepare("select ifnull(details, summary) d, case when details is null then 0 else 1 end as detailed from resources where id = ? and type = ?")
 	if err != nil {
 		db.Close()
 		return nil, err
@@ -70,12 +69,12 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 		return nil, err
 	}
 
-	iResource, err := db.Prepare("insert into resources (summary, details, id) values (?, ?, ?)")
+	iResource, err := db.Prepare("insert into resources (summary, details, type, id) values (?, ?, ?, ?)")
 	if err != nil {
 		db.Close()
 		return nil, err
 	}
-	uResource, err := db.Prepare("update resources set summary = ?, details = ? where id = ?")
+	uResource, err := db.Prepare("update resources set summary = ?, details = ?, type = ? where id = ?")
 	if err != nil {
 		db.Close()
 		return nil, err
@@ -87,13 +86,13 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 	}
 
 	sizes := []int{25, 20, 15, 10, 5, 4, 3, 2, 1}
-	summaryBatcher, err := NewBatcher(db, "select id, summary from resources where id in #IN#", sizes...)
+	summaryBatcher, err := NewBatcher(db, "select id, type, summary from resources where id in #IN#", sizes...)
 	if err != nil {
 		db.Close()
 		return nil, err
 	}
 
-	detailsBatcher, err := NewBatcher(db, "select id, details from resources where id in #IN#", sizes...)
+	detailsBatcher, err := NewBatcher(db, "select id, type, details from resources where id in #IN#", sizes...)
 	if err != nil {
 		db.Close()
 		return nil, err
@@ -113,12 +112,12 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 	}, nil
 }
 
-func (s *SqliteStorage) Get(id Id) (payload []byte, detailed bool) {
-	s.get.QueryRow(id).Scan(&payload, &detailed)
+func (s *SqliteStorage) Get(id Id, tpe string) (payload []byte, detailed bool) {
+	s.get.QueryRow(id, tpe).Scan(&payload, &detailed)
 	return payload, detailed
 }
 
-func (s *SqliteStorage) Fill(params []interface{}, index map[Id]int, payloads [][]byte, detailed bool) error {
+func (s *SqliteStorage) Fill(params []interface{}, index map[Id]int, payloads [][]byte, types []string, detailed bool) error {
 	batcher := s.summaryBatcher
 	if detailed {
 		batcher = s.detailsBatcher
@@ -133,9 +132,12 @@ func (s *SqliteStorage) Fill(params []interface{}, index map[Id]int, payloads []
 		}
 		for rows.Next() {
 			var id Id
+			var tpe string
 			var payload []byte
-			rows.Scan(&id, &payload)
-			payloads[index[id]] = payload
+			rows.Scan(&id, &tpe, &payload)
+			at := index[id]
+			payloads[at] = payload
+			types[at] = tpe
 		}
 		rows.Close()
 	}
@@ -144,15 +146,15 @@ func (s *SqliteStorage) Fill(params []interface{}, index map[Id]int, payloads []
 
 func (s *SqliteStorage) LoadNResources(n int) (map[Id][][]byte, error) {
 	m := make(map[Id][][]byte, n)
-	rows, err := s.DB.Query("select id, summary, details from resources order by id desc limit ?", n)
+	rows, err := s.DB.Query("select id, type, summary, details from resources order by id desc limit ?", n)
 	if err != nil {
 		return nil, err
 	}
 	for rows.Next() {
 		var id int
-		var summary, details []byte
-		rows.Scan(&id, &summary, &details)
-		m[Id(id)] = [][]byte{summary, details}
+		var tpe, summary, details []byte
+		rows.Scan(&id, &tpe, &summary, &details)
+		m[Id(id)] = [][]byte{tpe, summary, details}
 	}
 	return m, nil
 }
@@ -235,8 +237,8 @@ func (s *SqliteStorage) UpsertList(id string, payload []byte) ([]Id, error) {
 	return s.upsertIndex(id, 3, payload)
 }
 
-func (s *SqliteStorage) UpsertResource(id Id, summary []byte, details []byte) error {
-	return s.upsert(s.iResource, s.uResource, summary, details, id)
+func (s *SqliteStorage) UpsertResource(id Id, summary []byte, details []byte, tpe string) error {
+	return s.upsert(s.iResource, s.uResource, summary, details, tpe, id)
 }
 
 func (s *SqliteStorage) RemoveList(id string) error {

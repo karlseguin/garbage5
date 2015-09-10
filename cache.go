@@ -1,6 +1,7 @@
 package indexes
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -13,7 +14,6 @@ const (
 
 var (
 	nullItem = &Item{
-		value:   nil,
 		expires: time.Now().Add(time.Hour * 10000),
 	}
 	summaryRef = nullItem
@@ -21,8 +21,8 @@ var (
 
 type Fetcher interface {
 	LoadNResources(n int) (map[Id][][]byte, error)
-	Fill([]interface{}, map[Id]int, [][]byte, bool) error
-	Get(id Id) ([]byte, bool)
+	Fill([]interface{}, map[Id]int, [][]byte, []string, bool) error
+	Get(id Id, tpe string) ([]byte, bool)
 }
 
 type Cache struct {
@@ -41,7 +41,12 @@ type Bucket struct {
 
 type Item struct {
 	expires time.Time
-	value   []byte
+	Value
+}
+
+type Value struct {
+	tpe     int
+	payload []byte
 }
 
 func newCache(fetcher Fetcher, configuration *Configuration) (*Cache, error) {
@@ -62,11 +67,12 @@ func newCache(fetcher Fetcher, configuration *Configuration) (*Cache, error) {
 			return nil, err
 		}
 		for id, payload := range values {
-			cache.Set(id, payload[0], false)
-			if payload[1] == nil {
+			tpe := intern(string(payload[0]))
+			cache.set(id, Value{tpe, payload[1]}, false)
+			if payload[2] == nil {
 				cache.bucket(id, true).set(id, summaryRef)
 			} else {
-				cache.Set(id, payload[1], true)
+				cache.set(id, Value{tpe, payload[2]}, true)
 			}
 		}
 	}
@@ -77,55 +83,64 @@ func (c *Cache) Fill(result *NormalResult, detailed bool) error {
 	missCount := 0
 	miss := result.miss
 	indexMap := make(map[Id]int, result.Len())
+	types := result.types
 	payloads := result.payloads
 	for i, id := range result.Ids() {
-		resource := c.get(id, detailed)
-		if resource == nil {
+		item := c.get(id, detailed)
+		if item == nil {
 			payloads[i] = nil
+			types[i] = ""
 			miss[missCount] = id
 			indexMap[id] = i
 			missCount++
 		} else {
-			payloads[i] = resource
+			payloads[i] = item.Value.payload
 		}
 	}
 
 	if missCount > 0 {
-		if err := c.fetcher.Fill(miss[:missCount], indexMap, payloads, detailed); err != nil {
+		if err := c.fetcher.Fill(miss[:missCount], indexMap, payloads, types, detailed); err != nil {
 			return err
 		}
 		for id, index := range indexMap {
-			c.Set(id, payloads[index], detailed)
+			c.set(id, Value{intern(types[index]), payloads[index]}, detailed)
 		}
 	}
 	return nil
 }
 
-func (c *Cache) Fetch(id Id) []byte {
-	return c.fetch(id, true)
+func (c *Cache) Fetch(id Id, tpeStr string) []byte {
+	return c.fetch(id, tpeStr, true)
 }
 
-func (c *Cache) fetch(id Id, detailed bool) []byte {
-	item := c.getItem(id, detailed)
+func (c *Cache) fetch(id Id, tpeStr string, detailed bool) []byte {
+	return c.fetchTyped(id, intern(tpeStr), tpeStr, detailed)
+}
+
+func (c *Cache) fetchTyped(id Id, tpe int, tpeStr string, detailed bool) []byte {
+	item := c.get(id, detailed)
 	if item != nil {
 		if detailed == true && item == summaryRef {
-			return c.fetch(id, false)
+			return c.fetchTyped(id, tpe, tpeStr, false)
 		}
-		return item.value
+		if item.tpe != tpe {
+			return nil
+		}
+		return item.Value.payload
 	}
-
-	payload, detailed := c.fetcher.Get(id)
+	fmt.Println(id, tpeStr)
+	payload, detailed := c.fetcher.Get(id, tpeStr)
 	if payload == nil {
 		return nil
 	}
 	if detailed == false {
 		c.bucket(id, true).set(id, summaryRef)
 	}
-	c.Set(id, payload, detailed)
+	c.set(id, Value{tpe, payload}, detailed)
 	return payload
 }
 
-func (c *Cache) getItem(id Id, detailed bool) *Item {
+func (c *Cache) get(id Id, detailed bool) *Item {
 	bucket := c.bucket(id, detailed)
 	item := bucket.get(id)
 	if item == nil {
@@ -135,26 +150,18 @@ func (c *Cache) getItem(id Id, detailed bool) *Item {
 		return item
 	}
 	if bucket.remove(id) == true {
-		atomic.AddInt64(&c.size, -int64(len(item.value)))
+		atomic.AddInt64(&c.size, -int64(len(item.Value.payload)))
 	}
 	return nil
 }
 
-func (c *Cache) get(id Id, detailed bool) []byte {
-	item := c.getItem(id, detailed)
-	if item == nil {
-		return nil
-	}
-	return item.value
-}
-
-func (c *Cache) Set(id Id, value []byte, detailed bool) {
+func (c *Cache) set(id Id, value Value, detailed bool) {
 	item := &Item{
-		value:   value,
+		Value:   value,
 		expires: time.Now().Add(c.ttl),
 	}
 	if c.bucket(id, detailed).set(id, item) == true {
-		if atomic.AddInt64(&c.size, int64(len(value))) >= c.max && atomic.CompareAndSwapUint32(&c.gcing, 0, 1) {
+		if atomic.AddInt64(&c.size, int64(len(value.payload))) >= c.max && atomic.CompareAndSwapUint32(&c.gcing, 0, 1) {
 			go c.gc()
 		}
 	}
@@ -207,7 +214,7 @@ func (b *Bucket) sizeAndRemove(id Id) int64 {
 	if !exists {
 		return 0
 	}
-	return int64(len(item.value))
+	return int64(len(item.Value.payload))
 }
 
 func (b *Bucket) set(id Id, item *Item) bool {
@@ -238,5 +245,5 @@ func (b *Bucket) gc() int64 {
 	b.Lock()
 	delete(b.lookup, oldestId)
 	b.Unlock()
-	return int64(len(oldest.value))
+	return int64(len(oldest.Value.payload))
 }
