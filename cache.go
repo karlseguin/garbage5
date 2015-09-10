@@ -1,7 +1,6 @@
 package indexes
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -128,7 +127,6 @@ func (c *Cache) fetchTyped(id Id, tpe int, tpeStr string, detailed bool) []byte 
 		}
 		return item.Value.payload
 	}
-	fmt.Println(id, tpeStr)
 	payload, detailed := c.fetcher.Get(id, tpeStr)
 	if payload == nil {
 		return nil
