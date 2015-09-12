@@ -150,6 +150,7 @@ func (s *SqliteStorage) LoadNResources(n int) (map[Id][][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	for rows.Next() {
 		var id int
 		var tpe, summary, details []byte
