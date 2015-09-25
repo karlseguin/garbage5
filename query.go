@@ -32,15 +32,16 @@ func (p QueryPool) Checkout() *Query {
 }
 
 type Query struct {
-	limit    int
-	around   Id
-	offset   int
-	sort     List
-	desc     bool
-	detailed bool
-	sets     *Sets
-	db       *Database
-	result   *NormalResult
+	limit     int
+	around    Id
+	offset    int
+	sort      List
+	desc      bool
+	detailed  bool
+	noPayload bool
+	sets      *Sets
+	db        *Database
+	result    *NormalResult
 }
 
 func (q *Query) Sort(name string) *Query {
@@ -91,6 +92,11 @@ func (q *Query) HasSort() bool {
 
 func (q *Query) Detailed() *Query {
 	q.detailed = true
+	return q
+}
+
+func (q *Query) NoPayload() *Query {
+	q.noPayload = true
 	return q
 }
 
@@ -206,6 +212,9 @@ func (q *Query) execute(filter func(id Id) bool) (Result, error) {
 			return q.executeOne(filter, id)
 		})
 	}
+	if q.noPayload {
+		return q.result, nil
+	}
 	return q.result.fill(q.detailed)
 }
 
@@ -276,6 +285,9 @@ func (q *Query) setExecute(filter Filter) (Result, error) {
 			}
 		}
 	}
+	if q.noPayload {
+		return q.result, nil
+	}
 	return q.result.fill(q.detailed)
 }
 
@@ -298,5 +310,6 @@ func (q *Query) release() {
 	q.sets.l = 0
 	q.desc = false
 	q.detailed = false
+	q.noPayload = false
 	q.db.queries <- q
 }

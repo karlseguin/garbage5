@@ -32,6 +32,14 @@ func (qt QueryTests) HandlesOnlyHavingOneSet() {
 	Expect(result.Len()).To.Equal(3)
 }
 
+func (qt QueryTests) ReturnsIdsOnly() {
+	result, _ := qt.db.Query().And("1").Limit(3).NoPayload().Execute()
+	ids := result.Ids()
+	Expect(ids[0]).To.Eql(2)
+	Expect(ids[1]).To.Eql(4)
+	Expect(ids[2]).To.Eql(6)
+}
+
 func (qt QueryTests) LimitsNumberOfResults() {
 	result, _ := qt.db.Query().Sort("recent").Limit(3).Execute()
 	Expect(result.HasMore()).To.Equal(true)
