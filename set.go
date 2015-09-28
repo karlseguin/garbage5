@@ -70,7 +70,6 @@ func NewSet(ids []Id) Set {
 	if l < 32 {
 		return NewSmallSet(ids)
 	}
-
 	set := intset.NewSized32(uint32(l))
 	for i := 0; i < l; i++ {
 		set.Set(uint32(ids[i]))

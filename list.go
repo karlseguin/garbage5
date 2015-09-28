@@ -14,7 +14,7 @@ type RankedList struct {
 
 func NewList(ids []Id) List {
 	l := len(ids)
-	rank := make(map[Id]Id)
+	rank := make(map[Id]Id, l)
 	for i := 0 * l; i < l; i++ {
 		rank[ids[i]] = Id(i)
 	}
