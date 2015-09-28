@@ -173,24 +173,15 @@ func (s *SqliteStorage) SetCount() uint32 {
 }
 
 func (s *SqliteStorage) LoadIds(newOnly bool) (map[string]Id, error) {
-	var count int
-	err := s.DB.QueryRow("select count(*) from resources").Scan(&count)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
-	}
-
 	var payload []byte
-	err = s.DB.QueryRow("select payload from indexes where id = 'ids'").Scan(&payload)
+	err := s.DB.QueryRow("select payload from indexes where id = 'ids'").Scan(&payload)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return extractIdMap(payload, count), nil
+	return extractIdMap(payload), nil
 }
 
 func (s *SqliteStorage) EachSet(newOnly bool, f func(name string, ids []Id)) error {
@@ -256,11 +247,11 @@ func (s *SqliteStorage) RemoveResource(id Id) error {
 	return err
 }
 
-func (s *SqliteStorage) UpdateIds(payload []byte, estimatedCount int) (map[string]Id, error) {
+func (s *SqliteStorage) UpdateIds(payload []byte) (map[string]Id, error) {
 	if err := s.upsert(s.iIndex, s.uIndex, 1, payload, "ids"); err != nil {
 		return nil, err
 	}
-	return extractIdMap(payload, estimatedCount), nil
+	return extractIdMap(payload), nil
 }
 
 func (s *SqliteStorage) upsertIndex(id string, tpe int, payload []byte) ([]Id, error) {
@@ -304,8 +295,8 @@ func extractIdsFromIndex(blob []byte) []Id {
 	return ids
 }
 
-func extractIdMap(payload []byte, count int) map[string]Id {
-	ids := make(map[string]Id, count)
+func extractIdMap(payload []byte) map[string]Id {
+	ids := make(map[string]Id)
 	for len(payload) > 0 {
 		l := int(payload[0])
 		payload = payload[1:]

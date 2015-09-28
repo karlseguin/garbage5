@@ -48,18 +48,23 @@ func (s RankedList) Around(target Id, fn func(Id) bool) {
 	index := s.rank[target]
 	l := Id(len(s.ids))
 	decr, incr := index-1, index+1
-	for incr < l || decr >= 0 {
+	canDescend := index != 0
+	for incr < l || canDescend {
 		if incr < l {
 			if fn(s.ids[incr]) == false {
 				return
 			}
 			incr++
 		}
-		if decr >= 0 {
+		if canDescend {
 			if fn(s.ids[decr]) == false {
 				return
 			}
-			decr--
+			if decr == 0 {
+				canDescend = false
+			} else {
+				decr--
+			}
 		}
 	}
 }

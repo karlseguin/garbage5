@@ -65,13 +65,12 @@ func (sets *Sets) Sort() {
 	}
 }
 
-type FixedSet struct {
-	sync.RWMutex
-	ids *intset.Sized32
-}
-
 func NewSet(ids []Id) Set {
 	l := len(ids)
+	if l < 32 {
+		return NewSmallSet(ids)
+	}
+
 	set := intset.NewSized32(uint32(l))
 	for i := 0; i < l; i++ {
 		set.Set(uint32(ids[i]))
@@ -79,6 +78,11 @@ func NewSet(ids []Id) Set {
 	return &FixedSet{
 		ids: set,
 	}
+}
+
+type FixedSet struct {
+	sync.RWMutex
+	ids *intset.Sized32
 }
 
 func (s *FixedSet) Len() int {
@@ -91,7 +95,9 @@ func (s *FixedSet) Exists(value Id) bool {
 
 func (s *FixedSet) Each(desc bool, fn func(Id) bool) {
 	s.ids.Each(func(id uint32) {
-		fn(Id(id))
+		if !fn(Id(id)) {
+			return
+		}
 	})
 }
 
@@ -106,6 +112,51 @@ func (s *FixedSet) CanRank() bool {
 
 func (s *FixedSet) Rank(id Id) (int, bool) {
 	return 0, false
+}
+
+type SmallSet struct {
+	sync.RWMutex
+	ids []Id
+}
+
+func NewSmallSet(ids []Id) *SmallSet {
+	return &SmallSet{ids: sortIds(ids)}
+}
+
+func (s *SmallSet) Len() int {
+	return len(s.ids)
+}
+
+func (s *SmallSet) Exists(value Id) bool {
+	for _, id := range s.ids {
+		if id > value {
+			return false
+		}
+		if value == id {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *SmallSet) Each(dec bool, fn func(Id) bool) {
+	for _, id := range s.ids {
+		if !fn(id) {
+			return
+		}
+	}
+}
+
+func (s *SmallSet) CanRank() bool {
+	return false
+}
+
+func (s *SmallSet) Rank(id Id) (int, bool) {
+	return 0, false
+}
+
+func (s *SmallSet) Around(id Id, fn func(id Id) bool) {
+	s.Each(false, fn)
 }
 
 type emptySet struct {
@@ -149,4 +200,17 @@ func (s *emptySet) CanRank() bool {
 
 func (s *emptySet) Rank(id Id) (int, bool) {
 	return 0, false
+}
+
+func sortIds(ids []Id) []Id {
+	l := len(ids)
+	for i := 1; i < l; i++ {
+		j := i
+		t := ids[i]
+		for ; j > 0 && ids[j-1] > t; j-- {
+			ids[j] = ids[j-1]
+		}
+		ids[j] = t
+	}
+	return ids
 }

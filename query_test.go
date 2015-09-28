@@ -36,8 +36,8 @@ func (qt QueryTests) ReturnsIdsOnly() {
 	result, _ := qt.db.Query().And("1").Limit(3).NoPayload().Execute()
 	ids := result.Ids()
 	Expect(ids[0]).To.Eql(2)
-	Expect(ids[1]).To.Eql(4)
-	Expect(ids[2]).To.Eql(6)
+	Expect(ids[1]).To.Eql(3)
+	Expect(ids[2]).To.Eql(4)
 }
 
 func (qt QueryTests) LimitsNumberOfResults() {

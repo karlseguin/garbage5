@@ -30,7 +30,7 @@ type Storage interface {
 	RemoveSet(id string) error
 	RemoveList(id string) error
 	RemoveResource(id Id) error
-	UpdateIds(blob []byte, estimatedCount int) (map[string]Id, error)
+	UpdateIds(blob []byte) (map[string]Id, error)
 }
 
 type Resource interface {
@@ -195,11 +195,7 @@ func (db *Database) RemoveResource(id Id) error {
 }
 
 func (db *Database) UpdateIds(blob []byte) error {
-	db.idLock.RLock()
-	currentSize := len(db.ids)
-	db.idLock.RUnlock()
-
-	ids, err := db.storage.UpdateIds(blob, currentSize)
+	ids, err := db.storage.UpdateIds(blob)
 	if err != nil {
 		return err
 	}
