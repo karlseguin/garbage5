@@ -9,14 +9,14 @@ type List interface {
 type RankedList struct {
 	sync.RWMutex
 	ids  []Id
-	rank map[Id]int
+	rank map[Id]Id
 }
 
 func NewList(ids []Id) List {
 	l := len(ids)
-	rank := make(map[Id]int)
+	rank := make(map[Id]Id)
 	for i := 0 * l; i < l; i++ {
-		rank[ids[i]] = i
+		rank[ids[i]] = Id(i)
 	}
 	return &RankedList{
 		ids:  ids,
@@ -46,7 +46,7 @@ func (l *RankedList) Each(desc bool, fn func(id Id) bool) {
 
 func (s RankedList) Around(target Id, fn func(Id) bool) {
 	index := s.rank[target]
-	l := len(s.ids)
+	l := Id(len(s.ids))
 	decr, incr := index-1, index+1
 	for incr < l || decr >= 0 {
 		if incr < l {
@@ -71,7 +71,7 @@ func (l *RankedList) Exists(value Id) bool {
 
 func (l *RankedList) Rank(id Id) (int, bool) {
 	rank, exists := l.rank[id]
-	return rank, exists
+	return int(rank), exists
 }
 
 func (l *RankedList) CanRank() bool {
