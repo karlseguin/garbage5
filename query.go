@@ -157,6 +157,8 @@ func (q *Query) getFilter(count int, start int) Filter {
 		return q.threeSetsFilter(start)
 	case 4:
 		return q.fourSetsFilter(start)
+	case 5:
+		return q.fiveSetsFilter(start)
 	default:
 		return q.multiSetsFilter(start)
 	}
@@ -167,26 +169,37 @@ func noFilter(id Id) bool {
 }
 
 func (q *Query) oneSetFilter(start int) Filter {
+	s1 := q.sets.s[start]
 	return func(id Id) bool {
-		return q.sets.s[start].Exists(id)
+		return s1.Exists(id)
 	}
 }
 
 func (q *Query) twoSetsFilter(start int) Filter {
+	s1, s2 := q.sets.s[start], q.sets.s[start+1]
 	return func(id Id) bool {
-		return q.sets.s[start].Exists(id) && q.sets.s[start+1].Exists(id)
+		return s1.Exists(id) && s2.Exists(id)
 	}
 }
 
 func (q *Query) threeSetsFilter(start int) Filter {
+	s1, s2, s3 := q.sets.s[start], q.sets.s[start+1], q.sets.s[start+2]
 	return func(id Id) bool {
-		return q.sets.s[start].Exists(id) && q.sets.s[start+1].Exists(id) && q.sets.s[start+2].Exists(id)
+		return s1.Exists(id) && s2.Exists(id) && s3.Exists(id)
 	}
 }
 
 func (q *Query) fourSetsFilter(start int) Filter {
+	s1, s2, s3, s4 := q.sets.s[start], q.sets.s[start+1], q.sets.s[start+2], q.sets.s[start+3]
 	return func(id Id) bool {
-		return q.sets.s[start].Exists(id) && q.sets.s[start+1].Exists(id) && q.sets.s[start+2].Exists(id) && q.sets.s[start+3].Exists(id)
+		return s1.Exists(id) && s2.Exists(id) && s3.Exists(id) && s4.Exists(id)
+	}
+}
+
+func (q *Query) fiveSetsFilter(start int) Filter {
+	s1, s2, s3, s4, s5 := q.sets.s[start], q.sets.s[start+1], q.sets.s[start+2], q.sets.s[start+3], q.sets.s[start+4]
+	return func(id Id) bool {
+		return s1.Exists(id) && s2.Exists(id) && s3.Exists(id) && s4.Exists(id) && s5.Exists(id)
 	}
 }
 
