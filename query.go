@@ -19,7 +19,7 @@ func NewQueryPool(db *Database, maxSets int, maxResults int) QueryPool {
 			db:     db,
 			limit:  50,
 			result: result,
-			sets:   &Sets{s: make([]Set, maxSets)},
+			sets:   NewSets(maxSets),
 		}
 		result.query = query
 		pool <- query
@@ -316,11 +316,11 @@ func (q *Query) setExecuteAdd(result *NormalResult, id Id) bool {
 
 // called when the result is released
 func (q *Query) release() {
+	q.sets.reset()
 	q.sort = nil
 	q.offset = 0
 	q.around = 0
 	q.limit = 50
-	q.sets.l = 0
 	q.desc = false
 	q.detailed = false
 	q.noPayload = false

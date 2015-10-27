@@ -25,7 +25,13 @@ type Set interface {
 
 type Sets struct {
 	l int
+	o []Set
 	s []Set
+}
+
+func NewSets(max int) *Sets {
+	o := make([]Set, max)
+	return &Sets{o: o, s: o}
 }
 
 func (sets *Sets) Add(set Set) {
@@ -63,6 +69,11 @@ func (sets *Sets) Sort() {
 		}
 		sets.s[j] = t
 	}
+}
+
+func (sets *Sets) reset() {
+	sets.l = 0
+	sets.s = sets.o
 }
 
 func NewSet(ids []Id) Set {
