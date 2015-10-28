@@ -117,6 +117,13 @@ func (db *Database) GetInternal(iid Id, tpe string) []byte {
 	return db.cache.Fetch(iid, tpe)
 }
 
+func (db *Database) GetMapping(id string) (Id, bool) {
+	defer db.idLock.RUnlock()
+	db.idLock.RLock()
+	iid, exists := db.ids[id]
+	return iid, exists
+}
+
 func (db *Database) QueryIds(ids ...string) *Query {
 	iids := make(SimpleList, len(ids))
 	db.idLock.RLock()
