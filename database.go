@@ -17,19 +17,14 @@ type Storage interface {
 	Close() error
 	ListCount() uint32
 	SetCount() uint32
-	Fill(params []interface{}, index map[Id]int, payloads [][]byte, types []string, detailed bool) error
-	Get(id Id, tpe string) ([]byte, bool)
-	LoadNResources(n int) (map[Id][][]byte, error)
 	LoadIds(newOnly bool) (map[string]Id, error)
 	EachSet(newOnly bool, f func(name string, ids []Id)) error
 	EachList(newOnly bool, f func(name string, ids []Id)) error
 	ClearNew() error
 	UpsertSet(id string, payload []byte) ([]Id, error)
 	UpsertList(id string, payload []byte) ([]Id, error)
-	UpsertResource(id Id, summary []byte, details []byte, tpe string) error
 	RemoveSet(id string) error
 	RemoveList(id string) error
-	RemoveResource(id Id) error
 	UpdateIds(blob []byte) (map[string]Id, error)
 }
 
@@ -40,7 +35,6 @@ type Resource interface {
 
 type Database struct {
 	queries  QueryPool
-	cache    *Cache
 	idLock   sync.RWMutex
 	setLock  sync.RWMutex
 	listLock sync.RWMutex
@@ -60,13 +54,6 @@ func New(c *Configuration) (*Database, error) {
 		return nil, err
 	}
 	database.storage = storage
-
-	cache, err := newCache(storage, c)
-	if err != nil {
-		database.Close()
-		return nil, err
-	}
-	database.cache = cache
 	database.queries = NewQueryPool(database, c.maxSets, c.maxResults)
 	return database, nil
 }
@@ -101,20 +88,6 @@ func (db *Database) GetSet(name string) Set {
 		return EmptySet
 	}
 	return s
-}
-
-func (db *Database) Get(id string, tpe string) []byte {
-	db.idLock.RLock()
-	iid, exists := db.ids[id]
-	db.idLock.RUnlock()
-	if exists == false {
-		return nil
-	}
-	return db.GetInternal(iid, tpe)
-}
-
-func (db *Database) GetInternal(iid Id, tpe string) []byte {
-	return db.cache.Fetch(iid, tpe)
 }
 
 func (db *Database) GetMapping(id string) (Id, bool) {
@@ -183,21 +156,6 @@ func (db *Database) RemoveList(name string) error {
 	db.listLock.Lock()
 	delete(db.lists, name)
 	db.listLock.Unlock()
-	return nil
-}
-
-func (db *Database) UpdateResource(id Id, summary []byte, details []byte, tpe string) error {
-	if err := db.storage.UpsertResource(id, summary, details, tpe); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (db *Database) RemoveResource(id Id) error {
-	if err := db.storage.RemoveResource(id); err != nil {
-		return err
-	}
-	db.cache.Remove(id)
 	return nil
 }
 

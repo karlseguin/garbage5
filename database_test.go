@@ -49,11 +49,11 @@ func (_ DatabaseTests) QueryIdsNull() {
 	db := createDB()
 	defer db.Close()
 	result, _ := db.QueryIds("8r", "293r").Execute()
-	payloads := result.Payloads()
+	ids := result.Ids()
 	Expect(result.HasMore()).To.Equal(false)
 	Expect(result.Len()).To.Equal(2)
-	Expect(string(payloads[0])).To.Equal(JSON(`{"id": "7r"}`))
-	Expect(payloads[1]).To.Equal(nil)
+	Expect(ids[0]).To.Eql(7)
+	Expect(ids[1]).To.Eql(0)
 }
 
 func (_ DatabaseTests) QueryIdsDoesntOverflow() {
@@ -66,10 +66,10 @@ func (_ DatabaseTests) QueryIdsDoesntOverflow() {
 	result.Release()
 
 	result, _ = db.QueryIds("8r", "23r").Execute()
-	payloads := result.Payloads()
+	ids := result.Ids()
 	Expect(result.Len()).To.Equal(2)
-	Expect(string(payloads[0])).To.Equal(JSON(`{"id": "7r"}`))
-	Expect(payloads[1]).To.Equal(nil)
+	Expect(ids[0]).To.Eql(7)
+	Expect(ids[1]).To.Eql(0)
 }
 
 func (_ DatabaseTests) Each(t func()) {

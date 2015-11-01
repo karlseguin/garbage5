@@ -14,7 +14,7 @@ type Filter func(id Id) bool
 func NewQueryPool(db *Database, maxSets int, maxResults int) QueryPool {
 	pool := make(QueryPool, QueryPoolSize)
 	for i := 0; i < QueryPoolSize; i++ {
-		result := newResult(db.cache, maxSets, maxResults)
+		result := newResult(maxSets, maxResults)
 		query := &Query{
 			db:     db,
 			limit:  50,
@@ -32,16 +32,14 @@ func (p QueryPool) Checkout() *Query {
 }
 
 type Query struct {
-	limit     int
-	around    Id
-	offset    int
-	sort      List
-	desc      bool
-	detailed  bool
-	noPayload bool
-	sets      *Sets
-	db        *Database
-	result    *NormalResult
+	limit  int
+	around Id
+	offset int
+	sort   List
+	desc   bool
+	sets   *Sets
+	db     *Database
+	result *NormalResult
 }
 
 func (q *Query) Sort(name string) *Query {
@@ -88,16 +86,6 @@ func (q *Query) AndSet(set Set) *Query {
 
 func (q *Query) HasSort() bool {
 	return q.sort != nil
-}
-
-func (q *Query) Detailed() *Query {
-	q.detailed = true
-	return q
-}
-
-func (q *Query) NoPayload() *Query {
-	q.noPayload = true
-	return q
 }
 
 // Executes the query. After execution, the query object should not be used until
@@ -225,10 +213,7 @@ func (q *Query) execute(filter func(id Id) bool) (Result, error) {
 			return q.executeOne(filter, id)
 		})
 	}
-	if q.noPayload {
-		return q.result, nil
-	}
-	return q.result.fill(q.detailed)
+	return q.result, nil
 }
 
 func (q *Query) executeOne(filter func(id Id) bool, id Id) bool {
@@ -298,10 +283,7 @@ func (q *Query) setExecute(filter Filter) (Result, error) {
 			}
 		}
 	}
-	if q.noPayload {
-		return q.result, nil
-	}
-	return q.result.fill(q.detailed)
+	return q.result, nil
 }
 
 func (q *Query) setExecuteAdd(result *NormalResult, id Id) bool {
@@ -322,7 +304,5 @@ func (q *Query) release() {
 	q.around = 0
 	q.limit = 50
 	q.desc = false
-	q.detailed = false
-	q.noPayload = false
 	q.db.queries <- q
 }

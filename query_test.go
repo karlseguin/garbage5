@@ -32,14 +32,6 @@ func (qt QueryTests) HandlesOnlyHavingOneSet() {
 	Expect(result.Len()).To.Equal(3)
 }
 
-func (qt QueryTests) ReturnsIdsOnly() {
-	result, _ := qt.db.Query().And("1").Limit(3).NoPayload().Execute()
-	ids := result.Ids()
-	Expect(ids[0]).To.Eql(2)
-	Expect(ids[1]).To.Eql(3)
-	Expect(ids[2]).To.Eql(4)
-}
-
 func (qt QueryTests) LimitsNumberOfResults() {
 	result, _ := qt.db.Query().Sort("recent").Limit(3).Execute()
 	Expect(result.HasMore()).To.Equal(true)
@@ -68,20 +60,6 @@ func (qt QueryTests) ReturnsResultsAroundFiltered() {
 	result, _ := qt.db.Query().Sort("recent").And("7").Around(7).Limit(5).Execute()
 	Expect(result.HasMore()).To.Equal(false)
 	assertResult(result, 5, 10, 2)
-}
-
-func (qt QueryTests) RetrievesResultSummary() {
-	result, _ := qt.db.Query().Sort("recent").Limit(2).Execute()
-	payloads := result.Payloads()
-	Expect(payloads[0]).To.Equal(JSON(`{"id": "1r"}`))
-	Expect(payloads[1]).To.Equal(JSON(`{"id": "2r"}`))
-}
-
-func (qt QueryTests) RetrievesResultDetails() {
-	result, _ := qt.db.Query().Detailed().Sort("recent").Limit(2).Execute()
-	payloads := result.Payloads()
-	Expect(payloads[0]).To.Equal(JSON(`{"id": "1rd"}`))
-	Expect(payloads[1]).To.Equal(JSON(`{"id": "2rd"}`))
 }
 
 func (qt QueryTests) AppliesAnOffset() {

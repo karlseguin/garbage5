@@ -3,7 +3,6 @@ package indexes
 import (
 	"database/sql"
 	"encoding/binary"
-	"strings"
 
 	_ "gopkg.in/mattn/go-sqlite3.v1"
 )
@@ -12,35 +11,11 @@ var (
 	encoder = binary.LittleEndian
 )
 
-type batcher struct {
-	*sql.Stmt
-	count int
-}
-
-func newBatcher(sql string, db *sql.DB, count int) (batcher, error) {
-	statements := make([]string, count)
-	for i := 0; i < count; i++ {
-		statements[i] = sql
-	}
-
-	stmt, err := db.Prepare(strings.Join(statements, " union all "))
-	if err != nil {
-		return batcher{}, err
-	}
-	return batcher{stmt, count}, nil
-}
-
 type SqliteStorage struct {
 	*sql.DB
-	get            *sql.Stmt
-	iIndex         *sql.Stmt
-	uIndex         *sql.Stmt
-	dIndex         *sql.Stmt
-	iResource      *sql.Stmt
-	uResource      *sql.Stmt
-	dResource      *sql.Stmt
-	summaryBatcher Batcher
-	detailsBatcher Batcher
+	iIndex *sql.Stmt
+	uIndex *sql.Stmt
+	dIndex *sql.Stmt
 }
 
 func newSqliteStorage(path string) (*SqliteStorage, error) {
@@ -48,11 +23,7 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 	if err != nil {
 		return nil, err
 	}
-	get, err := db.Prepare("select ifnull(details, summary) d, case when details is null then 0 else 1 end as detailed from resources where id = ? and type = ?")
-	if err != nil {
-		db.Close()
-		return nil, err
-	}
+
 	iIndex, err := db.Prepare("insert into indexes (type, payload, id) values (?, ?, ?)")
 	if err != nil {
 		db.Close()
@@ -69,95 +40,12 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 		return nil, err
 	}
 
-	iResource, err := db.Prepare("insert into resources (summary, details, type, id) values (?, ?, ?, ?)")
-	if err != nil {
-		db.Close()
-		return nil, err
-	}
-	uResource, err := db.Prepare("update resources set summary = ?, details = ?, type = ? where id = ?")
-	if err != nil {
-		db.Close()
-		return nil, err
-	}
-	dResource, err := db.Prepare("delete from resources where id = ?")
-	if err != nil {
-		db.Close()
-		return nil, err
-	}
-
-	sizes := []int{25, 20, 15, 10, 5, 4, 3, 2, 1}
-	summaryBatcher, err := NewBatcher(db, "select id, type, summary from resources where id in #IN#", sizes...)
-	if err != nil {
-		db.Close()
-		return nil, err
-	}
-
-	detailsBatcher, err := NewBatcher(db, "select id, type, details from resources where id in #IN#", sizes...)
-	if err != nil {
-		db.Close()
-		return nil, err
-	}
-
 	return &SqliteStorage{
-		DB:             db,
-		get:            get,
-		iIndex:         iIndex,
-		uIndex:         uIndex,
-		dIndex:         dIndex,
-		iResource:      iResource,
-		uResource:      uResource,
-		dResource:      dResource,
-		summaryBatcher: summaryBatcher,
-		detailsBatcher: detailsBatcher,
+		DB:     db,
+		iIndex: iIndex,
+		uIndex: uIndex,
+		dIndex: dIndex,
 	}, nil
-}
-
-func (s *SqliteStorage) Get(id Id, tpe string) (payload []byte, detailed bool) {
-	s.get.QueryRow(id, tpe).Scan(&payload, &detailed)
-	return payload, detailed
-}
-
-func (s *SqliteStorage) Fill(params []interface{}, index map[Id]int, payloads [][]byte, types []string, detailed bool) error {
-	batcher := s.summaryBatcher
-	if detailed {
-		batcher = s.detailsBatcher
-	}
-
-	query := batcher.For(params)
-
-	for query.HasMore() {
-		rows, err := query.Query()
-		if err != nil {
-			return err
-		}
-		for rows.Next() {
-			var id Id
-			var tpe string
-			var payload []byte
-			rows.Scan(&id, &tpe, &payload)
-			at := index[id]
-			payloads[at] = payload
-			types[at] = tpe
-		}
-		rows.Close()
-	}
-	return nil
-}
-
-func (s *SqliteStorage) LoadNResources(n int) (map[Id][][]byte, error) {
-	m := make(map[Id][][]byte, n)
-	rows, err := s.DB.Query("select id, type, summary, details from resources order by id desc limit ?", n)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var id int
-		var tpe, summary, details []byte
-		rows.Scan(&id, &tpe, &summary, &details)
-		m[Id(id)] = [][]byte{tpe, summary, details}
-	}
-	return m, nil
 }
 
 func (s *SqliteStorage) ListCount() uint32 {
@@ -229,21 +117,12 @@ func (s *SqliteStorage) UpsertList(id string, payload []byte) ([]Id, error) {
 	return s.upsertIndex(id, 3, payload)
 }
 
-func (s *SqliteStorage) UpsertResource(id Id, summary []byte, details []byte, tpe string) error {
-	return s.upsert(s.iResource, s.uResource, summary, details, tpe, id)
-}
-
 func (s *SqliteStorage) RemoveList(id string) error {
 	return s.RemoveSet(id)
 }
 
 func (s *SqliteStorage) RemoveSet(id string) error {
 	_, err := s.dIndex.Exec(id)
-	return err
-}
-
-func (s *SqliteStorage) RemoveResource(id Id) error {
-	_, err := s.dResource.Exec(id)
 	return err
 }
 
@@ -284,6 +163,9 @@ func (s *SqliteStorage) upsert(insert *sql.Stmt, update *sql.Stmt, arguments ...
 }
 
 func (s *SqliteStorage) Close() error {
+	s.iIndex.Close()
+	s.uIndex.Close()
+	s.dIndex.Close()
 	return s.DB.Close()
 }
 
