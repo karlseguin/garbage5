@@ -14,7 +14,6 @@ var (
 type SqliteStorage struct {
 	*sql.DB
 	iIndex *sql.Stmt
-	uIndex *sql.Stmt
 	dIndex *sql.Stmt
 }
 
@@ -24,12 +23,7 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 		return nil, err
 	}
 
-	iIndex, err := db.Prepare("insert into indexes (type, payload, id) values (?, ?, ?)")
-	if err != nil {
-		db.Close()
-		return nil, err
-	}
-	uIndex, err := db.Prepare("update indexes set type = ?, payload = ? where id = ?")
+	iIndex, err := db.Prepare("insert or replace into indexes (type, payload, id) values (?, ?, ?)")
 	if err != nil {
 		db.Close()
 		return nil, err
@@ -43,7 +37,6 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 	return &SqliteStorage{
 		DB:     db,
 		iIndex: iIndex,
-		uIndex: uIndex,
 		dIndex: dIndex,
 	}, nil
 }
@@ -127,14 +120,14 @@ func (s *SqliteStorage) RemoveSet(id string) error {
 }
 
 func (s *SqliteStorage) UpdateIds(payload []byte) (map[string]Id, error) {
-	if err := s.upsert(s.iIndex, s.uIndex, 1, payload, "ids"); err != nil {
+	if _, err := s.iIndex.Exec(1, payload, "ids"); err != nil {
 		return nil, err
 	}
 	return extractIdMap(payload), nil
 }
 
 func (s *SqliteStorage) upsertIndex(id string, tpe int, payload []byte) ([]Id, error) {
-	if err := s.upsert(s.iIndex, s.uIndex, tpe, payload, id); err != nil {
+	if _, err := s.iIndex.Exec(tpe, payload, id); err != nil {
 		return nil, err
 	}
 	return extractIdsFromIndex(payload), nil
@@ -164,7 +157,6 @@ func (s *SqliteStorage) upsert(insert *sql.Stmt, update *sql.Stmt, arguments ...
 
 func (s *SqliteStorage) Close() error {
 	s.iIndex.Close()
-	s.uIndex.Close()
 	s.dIndex.Close()
 	return s.DB.Close()
 }
