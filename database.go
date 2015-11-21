@@ -146,6 +146,10 @@ func (db *Database) UpdateList(name string, blob []byte) error {
 	db.listLock.Lock()
 	db.lists[name] = list
 	db.listLock.Unlock()
+
+	db.setLock.Lock()
+	db.sets[name] = list
+	db.setLock.Unlock()
 	return nil
 }
 
@@ -156,6 +160,10 @@ func (db *Database) RemoveList(name string) error {
 	db.listLock.Lock()
 	delete(db.lists, name)
 	db.listLock.Unlock()
+
+	db.setLock.Lock()
+	delete(db.sets, name)
+	db.setLock.Unlock()
 	return nil
 }
 
