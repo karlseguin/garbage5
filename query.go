@@ -47,6 +47,13 @@ func (q *Query) Sort(name string) *Query {
 	return q
 }
 
+func (q *Query) SortAnd(name string) *Query {
+	if q.sort != nil {
+		q.AndSet(q.sort)
+	}
+	return q.Sort(name)
+}
+
 func (q *Query) SortList(list List) *Query {
 	q.sort = list
 	return q
