@@ -39,27 +39,27 @@ func (qt QueryTests) LimitsNumberOfResults() {
 }
 
 func (qt QueryTests) ReturnsResultsAroundAnother() {
-	result, _ := qt.db.Query().Sort("recent").Around(7).Limit(5).Execute()
-	Expect(result.HasMore()).To.Equal(true)
-	assertResult(result, 8, 6, 9, 5, 10)
+	result, _ := qt.db.Query().Sort("recent").Around(7).Execute()
+	Expect(result.HasMore()).To.Equal(false)
+	assertResult(result, 8, 6)
 }
 
 func (qt QueryTests) ReturnsResultsAroundAtTheHead() {
-	result, _ := qt.db.Query().Sort("recent").Around(2).Limit(5).Execute()
-	Expect(result.HasMore()).To.Equal(true)
-	assertResult(result, 3, 1, 4, 5, 6)
+	result, _ := qt.db.Query().Sort("recent").Around(1).Execute()
+	Expect(result.HasMore()).To.Equal(false)
+	assertResult(result, 2)
 }
 
 func (qt QueryTests) ReturnsResultsAroundAtTheTail() {
-	result, _ := qt.db.Query().Sort("recent").Around(14).Limit(5).Execute()
-	Expect(result.HasMore()).To.Equal(true)
-	assertResult(result, 15, 13, 12, 11, 10)
+	result, _ := qt.db.Query().Sort("recent").Around(15).Execute()
+	Expect(result.HasMore()).To.Equal(false)
+	assertResult(result, 14)
 }
 
 func (qt QueryTests) ReturnsResultsAroundFiltered() {
-	result, _ := qt.db.Query().Sort("recent").And("7").Around(7).Limit(5).Execute()
+	result, _ := qt.db.Query().Sort("recent").And("7").Around(7).Execute()
 	Expect(result.HasMore()).To.Equal(false)
-	assertResult(result, 5, 10, 2)
+	assertResult(result, 10, 5)
 }
 
 func (qt QueryTests) AppliesAnOffset() {
@@ -149,9 +149,9 @@ func (qt QueryTests) SetBasedDesc() {
 }
 
 func (qt QueryTests) SetBasedAround() {
-	result, _ := qt.db.Query().Around(8).Sort("large").And("1").And("2").Limit(5).Execute()
-	Expect(result.HasMore()).To.Equal(true)
-	assertResult(result, 9, 7, 10, 6, 11)
+	result, _ := qt.db.Query().Around(8).Sort("large").And("1").And("2").Execute()
+	Expect(result.HasMore()).To.Equal(false)
+	assertResult(result, 9, 7)
 }
 
 func (qt QueryTests) SetBasedDescNoMore() {

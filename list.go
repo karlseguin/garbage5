@@ -45,27 +45,29 @@ func (l *RankedList) Each(desc bool, fn func(id Id) bool) {
 }
 
 func (s RankedList) Around(target Id, fn func(Id) bool) {
-	index := s.rank[target]
 	l := Id(len(s.ids))
-	decr, incr := index-1, index+1
-	canDescend := index != 0
-	for incr < l || canDescend {
-		if incr < l {
-			if fn(s.ids[incr]) == false {
-				return
-			}
-			incr++
+	index := s.rank[target]
+
+	for next := index + 1; next < l; next++ {
+		if fn(s.ids[next]) {
+			break
 		}
-		if canDescend {
-			if fn(s.ids[decr]) == false {
-				return
-			}
-			if decr == 0 {
-				canDescend = false
-			} else {
-				decr--
-			}
+	}
+
+	//there can be no prev
+	if index == 0 {
+		return
+	}
+
+	prev := index - 1
+	for {
+		if fn(s.ids[prev]) {
+			break
 		}
+		if prev == 0 {
+			break
+		}
+		prev--
 	}
 }
 
