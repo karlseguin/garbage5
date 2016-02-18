@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"encoding/binary"
 
-	_ "gopkg.in/mattn/go-sqlite3.v1"
+	_ "gopkg.in/karlseguin/go-sqlite3.v1"
 )
 
 var (
