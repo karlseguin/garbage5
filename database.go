@@ -72,9 +72,13 @@ func (db *Database) initialize(c *Configuration) (storage Storage, err error) {
 // and unlocking the list (Lock/RLock/Unlock/RUnlock). Changes to the list will
 // not be persisted.
 func (db *Database) GetList(name string) List {
-	defer db.listLock.RUnlock()
 	db.listLock.RLock()
-	return db.lists[name]
+	l, exists := db.lists[name]
+	db.listLock.RUnlock()
+	if exists == false {
+		return EmptyList
+	}
+	return l
 }
 
 // Returns the set. The set is unlocked; consumers are responsible for locking

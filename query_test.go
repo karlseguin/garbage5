@@ -184,6 +184,18 @@ func (qt QueryTests) ZeroLimit() {
 	Expect(result.Len()).To.Equal(0)
 }
 
+func (qt QueryTests) SortAnd() {
+	result, _ := qt.db.Query().SortAnd("large").And("recent").Execute()
+	Expect(result.HasMore()).To.Equal(false)
+	assertResult(result, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
+}
+
+func (qt QueryTests) SortAndInvalid() {
+	result, _ := qt.db.Query().SortAnd("invalid").And("recent").Execute()
+	Expect(result.HasMore()).To.Equal(false)
+	Expect(result.Len()).To.Equal(0)
+}
+
 func assertResult(result Result, expected ...uint32) {
 	defer result.Release()
 	Expect(result.Len()).To.Equal(len(expected))

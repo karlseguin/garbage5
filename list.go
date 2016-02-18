@@ -2,6 +2,8 @@ package indexes
 
 import "sync"
 
+var EmptyList = NewList(nil)
+
 type List interface {
 	Set
 }
@@ -44,7 +46,7 @@ func (l *RankedList) Each(desc bool, fn func(id Id) bool) {
 	}
 }
 
-func (s RankedList) Around(target Id, fn func(Id) bool) {
+func (s *RankedList) Around(target Id, fn func(Id) bool) {
 	l := Id(len(s.ids))
 	index := s.rank[target]
 
