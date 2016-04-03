@@ -44,7 +44,6 @@ func (_ UpdaterTests) UpdatesASet() {
 	Expect(set.Exists(5)).To.Equal(true)
 }
 
-// '1r', '2r', '3r', '4r', '5r', '6r', '7r', '8r', '9r', '10r', '11r', '12r', '13r', '14r', '15r'
 func (_ UpdaterTests) UpdatesAList() {
 	db := createDB()
 	defer db.Close()
@@ -64,4 +63,28 @@ func (_ UpdaterTests) UpdatesAList() {
 		index++
 		return true
 	})
+}
+
+// map[5r:4 7r:6 13r:12 3r:2 8r:7 2r:1 1r:0 4r:3 9r:8 14r:13 12r:11 6r:5 15r:14 10r:9 11r:10]
+func (_ UpdaterTests) UpdatesIds() {
+	db := createDB()
+	defer db.Close()
+
+	size := len(db.ids)
+
+	updater := db.Update()
+	updater.IdsUpdate("x", 19)
+	updater.IdsUpdate("y", 20)
+	updater.IdsDelete("5r")
+	updater.IdsDelete("7r")
+	updater.IdsDelete("13r")
+	updater.Commit()
+
+	Expect(len(db.ids)).To.Equal(size - 1)
+	Expect(db.ids["x"]).To.Equal(Id(19))
+	Expect(db.ids["y"]).To.Equal(Id(20))
+	Expect(db.ids["5r"]).To.Equal(Id(0))
+	Expect(db.ids["7r"]).To.Equal(Id(0))
+	Expect(db.ids["13r"]).To.Equal(Id(0))
+	Expect(db.ids["3r"]).To.Equal(Id(2))
 }

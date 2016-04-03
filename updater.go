@@ -6,12 +6,15 @@ type Updater struct {
 	db      *Database
 	scratch []byte
 	buffer  *bytes.Buffer
+	ids     map[string]Id
 	sets    map[string]Changes
 	lists   map[string]Changes
 }
 
 // For sets, the key of updated is the id, and the value is meaningless
 // For lists, the key is index to insert in, and the value is the id
+// For ids, the key is the string variant, the value is the Id to map to
+// For ids, if the value is 0, that means delete the key variant
 type Changes struct {
 	deleted map[Id]struct{}
 	updated map[Id]Id
@@ -20,6 +23,7 @@ type Changes struct {
 func NewUpdater(db *Database) *Updater {
 	return &Updater{
 		db:    db,
+		ids:   make(map[string]Id),
 		sets:  make(map[string]Changes),
 		lists: make(map[string]Changes),
 	}
@@ -35,6 +39,10 @@ func (u *Updater) ListUpdate(name string, id Id, index Id) {
 	changes.updated[index] = id
 }
 
+func (u *Updater) IdsUpdate(value string, id Id) {
+	u.ids[value] = id
+}
+
 func (u *Updater) SetDelete(name string, id Id) {
 	changes := u.get(name, u.sets)
 	changes.deleted[id] = struct{}{}
@@ -43,6 +51,10 @@ func (u *Updater) SetDelete(name string, id Id) {
 func (u *Updater) ListDelete(name string, id Id) {
 	changes := u.get(name, u.lists)
 	changes.deleted[id] = struct{}{}
+}
+
+func (u *Updater) IdsDelete(value string) {
+	u.ids[value] = 0
 }
 
 func (u *Updater) Commit() error {
@@ -63,6 +75,12 @@ func (u *Updater) Commit() error {
 		if err := u.db.UpdateList(name, u.buffer.Bytes()); err != nil {
 			return err
 		}
+	}
+
+	u.buffer.Reset()
+	u.serializeIds(u.ids)
+	if err := u.db.UpdateIds(u.buffer.Bytes()); err != nil {
+		return err
 	}
 
 	return nil
@@ -130,7 +148,31 @@ func (u *Updater) serializeList(name string, changes Changes) {
 	}
 }
 
+func (u *Updater) serializeIds(ids map[string]Id) {
+	existing := u.db.getIds()
+
+	// only add existing ones that aren't in our change set
+	for key, id := range existing {
+		if _, exists := ids[key]; !exists {
+			u.writeMap(key, id)
+		}
+	}
+
+	// add the new values
+	for key, id := range ids {
+		if id != 0 { // skip deletes
+			u.writeMap(key, id)
+		}
+	}
+}
+
 func (u *Updater) write(id Id) {
 	encoder.PutUint32(u.scratch, uint32(id))
 	u.buffer.Write(u.scratch)
+}
+
+func (u *Updater) writeMap(key string, id Id) {
+	u.buffer.WriteByte(byte(len(key)))
+	u.buffer.WriteString(key)
+	u.write(id)
 }

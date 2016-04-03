@@ -188,6 +188,12 @@ func (db *Database) UpdateIds(blob []byte) error {
 	return nil
 }
 
+func (db *Database) getIds() map[string]Id {
+	defer db.idLock.Unlock()
+	db.idLock.Lock()
+	return db.ids
+}
+
 // Close the database
 func (db *Database) Close() error {
 	return db.storage.Close()
