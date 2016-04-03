@@ -81,6 +81,11 @@ func (db *Database) GetList(name string) List {
 	return l
 }
 
+// Only have 1 updater operating on the database at a time
+func (db *Database) Update() *Updater {
+	return NewUpdater(db)
+}
+
 // Returns the set. The set is unlocked; consumers are responsible for locking
 // and unlocking the set (Lock/RLock/Unlock/RUnlock). Changes to the set will
 // not be persisted.
