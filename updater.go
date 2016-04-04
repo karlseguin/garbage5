@@ -122,9 +122,9 @@ func (u *Updater) serializeSet(name string, changes Changes) {
 
 // Serializing a list isn't easy since we need to figure out the order and such.
 func (u *Updater) serializeList(name string, changes Changes) {
-	existing := u.db.GetList(name)
-
 	index := Id(0)
+	existing := u.db.GetList(name)
+	added := make(map[Id]struct{}, len(changes.updated))
 	existing.Each(false, func(id Id) bool {
 		for {
 			id, exists := changes.updated[index]
@@ -132,19 +132,24 @@ func (u *Updater) serializeList(name string, changes Changes) {
 				break
 			}
 			u.write(id)
-			delete(changes.updated, index)
+			added[id] = struct{}{}
 			index++
 		}
 		if _, exists := changes.deleted[id]; exists == false {
-			u.write(id)
-			index++
+			if _, exists := added[id]; exists == false {
+				u.write(id)
+				added[id] = struct{}{}
+				index++
+			}
 		}
 		return true
 	})
 
 	// any updates we have remaining go at the end of our list
 	for _, id := range changes.updated {
-		u.write(id)
+		if _, exists := added[id]; exists == false {
+			u.write(id)
+		}
 	}
 }
 
