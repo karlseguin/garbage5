@@ -23,6 +23,8 @@ func newSqliteStorage(path string) (*SqliteStorage, error) {
 		return nil, err
 	}
 
+	db.Exec("pragma synchronous=NORMAL; pragma journal_mode=WAL;")
+
 	iIndex, err := db.Prepare("insert or replace into indexes (type, payload, id) values (?, ?, ?)")
 	if err != nil {
 		db.Close()
