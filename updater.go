@@ -58,23 +58,36 @@ func (u *Updater) IdsDelete(value string) {
 }
 
 func (u *Updater) Commit() error {
+	db := u.db
 	u.scratch = make([]byte, 4)
 	u.buffer = bytes.NewBuffer(make([]byte, 0, 5*1024*1024))
 
+	sql := db.storage.(*SqliteStorage)
+	tx, err := sql.Begin()
+	if err != nil {
+		return err
+	}
+	insert := tx.Stmt(sql.iIndex)
+
 	for name, changes := range u.sets {
 		u.buffer.Reset()
-		u.serializeSet(name, changes)
-		if err := u.db.UpdateSet(name, u.buffer.Bytes()); err != nil {
+		db.setSet(name, u.serializeSet(name, changes))
+		if _, err := insert.Exec(2, u.buffer.Bytes(), name); err != nil {
+			tx.Rollback()
 			return err
 		}
 	}
 
 	for name, changes := range u.lists {
 		u.buffer.Reset()
-		u.serializeList(name, changes)
-		if err := u.db.UpdateList(name, u.buffer.Bytes()); err != nil {
+		db.setList(name, u.serializeList(name, changes))
+		if _, err := insert.Exec(3, u.buffer.Bytes(), name); err != nil {
+			tx.Rollback()
 			return err
 		}
+	}
+	if err := tx.Commit(); err != nil {
+		return err
 	}
 
 	u.buffer.Reset()
@@ -82,7 +95,6 @@ func (u *Updater) Commit() error {
 	if err := u.db.UpdateIds(u.buffer.Bytes()); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -101,7 +113,7 @@ func (u *Updater) get(name string, container map[string]Changes) Changes {
 // Serializing a set is pretty simple. We take the existing set, serialize
 // each id which we don't want to delete and add to that any new ids that don't
 // already exists.
-func (u *Updater) serializeSet(name string, changes Changes) {
+func (u *Updater) serializeSet(name string, changes Changes) []Id {
 	existing := u.db.GetSet(name)
 
 	// serialize the existing values, except those we want to delete
@@ -118,10 +130,11 @@ func (u *Updater) serializeSet(name string, changes Changes) {
 			u.write(id)
 		}
 	}
+	return extractIdsFromIndex(u.buffer.Bytes())
 }
 
 // Serializing a list isn't easy since we need to figure out the order and such.
-func (u *Updater) serializeList(name string, changes Changes) {
+func (u *Updater) serializeList(name string, changes Changes) []Id {
 	index := Id(0)
 	existing := u.db.GetList(name)
 	added := make(map[Id]struct{}, len(changes.updated))
@@ -151,6 +164,7 @@ func (u *Updater) serializeList(name string, changes Changes) {
 			u.write(id)
 		}
 	}
+	return extractIdsFromIndex(u.buffer.Bytes())
 }
 
 func (u *Updater) serializeIds(ids map[string]Id) {

@@ -133,28 +133,6 @@ func (s *SqliteStorage) upsertIndex(id string, tpe int, payload []byte) ([]Id, e
 	return extractIdsFromIndex(payload), nil
 }
 
-func (s *SqliteStorage) upsert(insert *sql.Stmt, update *sql.Stmt, arguments ...interface{}) error {
-	tx, err := s.Begin()
-	if err != nil {
-		return err
-	}
-	insert, update = tx.Stmt(insert), tx.Stmt(update)
-
-	result, err := update.Exec(arguments...)
-	if err != nil {
-		return err
-	}
-	n, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if n == 1 {
-		return nil
-	}
-	_, err = insert.Exec(arguments...)
-	return err
-}
-
 func (s *SqliteStorage) Close() error {
 	s.iIndex.Close()
 	s.dIndex.Close()

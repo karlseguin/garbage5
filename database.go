@@ -129,11 +129,7 @@ func (db *Database) UpdateSet(name string, blob []byte) error {
 	if err != nil {
 		return err
 	}
-	set := NewSet(ids)
-	db.setLock.Lock()
-	db.sets[name] = set
-	db.setLock.Unlock()
-	return nil
+	return db.setSet(name, ids)
 }
 
 func (db *Database) RemoveSet(name string) error {
@@ -151,15 +147,8 @@ func (db *Database) UpdateList(name string, blob []byte) error {
 	if err != nil {
 		return err
 	}
-	list := NewList(ids)
-	db.listLock.Lock()
-	db.lists[name] = list
-	db.listLock.Unlock()
 
-	db.setLock.Lock()
-	db.sets[name] = list
-	db.setLock.Unlock()
-	return nil
+	return db.setList(name, ids)
 }
 
 func (db *Database) RemoveList(name string) error {
@@ -229,4 +218,25 @@ func (db *Database) loadData(newOnly bool, storage Storage) error {
 		db.setLock.Unlock()
 	})
 	return err
+}
+
+func (db *Database) setSet(name string, ids []Id) error {
+	set := NewSet(ids)
+	db.setLock.Lock()
+	db.sets[name] = set
+	db.setLock.Unlock()
+	return nil
+
+}
+
+func (db *Database) setList(name string, ids []Id) error {
+	list := NewList(ids)
+	db.listLock.Lock()
+	db.lists[name] = list
+	db.listLock.Unlock()
+
+	db.setLock.Lock()
+	db.sets[name] = list
+	db.setLock.Unlock()
+	return nil
 }
